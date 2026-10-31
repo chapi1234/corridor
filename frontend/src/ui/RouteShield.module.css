@@ -1,0 +1,34 @@
+.shield {
+  flex: none;
+  overflow: visible;
+}
+
+.body {
+  fill: var(--bg-2);
+  stroke: var(--route-muted);
+  stroke-width: 2;
+  transition:
+    stroke var(--dur-fast),
+    fill var(--dur-fast);
+}
+
+.band {
+  fill: var(--route-muted);
+  transition: fill var(--dur-fast);
+}
+
+.letter {
+  fill: var(--text-1);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+}
+
+.shield[data-selected='true'] .body {
+  stroke: var(--accent);
+  fill: var(--bg-3);
+}
+
+.shield[data-selected='true'] .band {
+  fill: var(--accent);
+}

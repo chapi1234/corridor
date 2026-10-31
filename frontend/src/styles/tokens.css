@@ -1,0 +1,121 @@
+/*
+ * Corridor design tokens — "Night Dispatch Console".
+ * Colour carries meaning: risk hues are reserved for risk; chrome is neutral + one accent.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces: deep teal-navy tuned from Spotter's palette */
+  --bg-0: #061a21;
+  --bg-1: #0a2530;
+  --bg-2: #0f303d;
+  --bg-3: #16404f;
+  --line-1: #1b4251;
+  --line-2: #285b6c;
+
+  --text-1: #e7f0f2;
+  --text-2: #a3bcc3;
+  --text-3: #65858e;
+
+  /* Instrument cyan: focus, selection, primary action */
+  --accent: #4fd1e8;
+  --accent-soft: rgb(79 209 232 / 0.14);
+  --accent-ink: #04232b;
+
+  --sign-green: #0f6b48;
+  --sign-green-ink: #f1fbf6;
+  --route-muted: #6d8e98;
+  --route-casing: #031015;
+
+  /* Risk scale */
+  --risk-0: #36d399;
+  --risk-1: #f4d03f;
+  --risk-2: #ff9532;
+  --risk-3: #ff4b55;
+  --risk-4: #c04bff;
+  --risk-unknown: #6b7f86;
+  --risk-ink-light: #0b1b20;
+  --risk-ink-dark: #ffffff;
+
+  --danger: #ff4b55;
+  --warning: #f4d03f;
+
+  /* Typography */
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-hero: 2.75rem;
+
+  /* Space (4px grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --radius: 2px;
+  --radius-pill: 999px;
+  --shadow-float: 0 8px 24px rgb(0 0 0 / 0.45);
+
+  --header-h: 56px;
+  --panel-w: 392px;
+  --ribbon-h: 132px;
+  --timeline-h: 68px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 140ms;
+  --dur-med: 240ms;
+
+  /* Lane-marking divider */
+  --lane-dash: repeating-linear-gradient(90deg, var(--line-2) 0 8px, transparent 8px 16px);
+}
+
+:root[data-theme='day'] {
+  color-scheme: light;
+
+  --bg-0: #e9eff0;
+  --bg-1: #f6f9f9;
+  --bg-2: #ffffff;
+  --bg-3: #e3ecee;
+  --line-1: #d3dfe2;
+  --line-2: #b4c7cc;
+
+  --text-1: #0b1f26;
+  --text-2: #3e5a63;
+  --text-3: #6f8a92;
+
+  --accent: #0a8fa8;
+  --accent-soft: rgb(10 143 168 / 0.12);
+  --accent-ink: #ffffff;
+
+  --route-muted: #7f9aa2;
+  --route-casing: #ffffff;
+
+  --risk-0: #17955f;
+  --risk-1: #b8930b;
+  --risk-2: #d9660b;
+  --risk-3: #d11f2d;
+  --risk-4: #8a1fd1;
+  --risk-unknown: #8c9a9f;
+
+  --shadow-float: 0 8px 24px rgb(11 31 38 / 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-med: 0ms;
+  }
+}

@@ -1,0 +1,24 @@
+.marker {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 46px;
+  padding: 3px 6px 4px;
+  border: 2px solid var(--sign-green-ink);
+  border-radius: 4px;
+  outline: 2px solid var(--sign-green);
+  background: var(--sign-green);
+  color: var(--sign-green-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.caption {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+.value {
+  font-size: var(--text-lg);
+}

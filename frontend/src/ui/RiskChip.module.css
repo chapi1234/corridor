@@ -1,0 +1,41 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius);
+  background-color: var(--chip-bg);
+  color: var(--chip-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sm {
+  height: 18px;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
+.md {
+  height: 22px;
+  padding: 0 8px;
+  font-size: var(--text-xs);
+}
+
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 1px;
+  background-color: var(--chip-bg);
+}
+
+/* No Travel and unknown carry a hatch so they never rely on hue alone. */
+.chip[data-level='4'],
+.swatch[data-level='4'],
+.chip[data-level='unknown'],
+.swatch[data-level='unknown'] {
+  background-image: repeating-linear-gradient(-45deg, transparent 0 3px, rgb(0 0 0 / 0.3) 3px 5px);
+}
