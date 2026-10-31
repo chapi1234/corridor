@@ -1,0 +1,96 @@
+.gauge {
+  display: grid;
+  gap: 6px;
+  padding: var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+}
+
+.gauge[data-driver='true'] {
+  border-color: var(--line-2);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.header {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.label {
+  display: flex;
+  flex: 1;
+  gap: var(--space-2);
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.driver {
+  padding: 0 5px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--text-2xs);
+}
+
+.value {
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.value small {
+  color: var(--text-3);
+  font-size: var(--text-2xs);
+  font-weight: 400;
+}
+
+.track {
+  position: relative;
+  height: 8px;
+  background: var(--bg-3);
+}
+
+.band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--band) 70%, transparent);
+}
+
+.band + .band {
+  border-left: 1px solid var(--bg-2);
+}
+
+.needle {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  transform: translateX(-50%);
+  border-radius: 1px;
+  background: var(--text-1);
+  box-shadow: 0 0 0 2px var(--bg-2);
+}
+
+.scale {
+  position: relative;
+  height: 11px;
+  color: var(--text-3);
+  font-size: 9px;
+}
+
+.scale span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.note {
+  margin: 0;
+  color: var(--risk-3);
+  font-size: var(--text-xs);
+}

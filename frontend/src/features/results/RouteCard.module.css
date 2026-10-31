@@ -1,0 +1,123 @@
+.card {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-1);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  text-align: left;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.card:hover,
+.card[data-hovered='true'] {
+  border-color: var(--line-2);
+}
+
+.card[data-selected='true'] {
+  border-left-color: var(--accent);
+  background: var(--bg-3);
+}
+
+.top {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.headline {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.highways {
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats {
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.tags {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
+}
+
+.tag {
+  padding: 1px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  color: var(--text-2);
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tag[data-tag='recommended'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.metric {
+  display: grid;
+  gap: 2px;
+}
+
+.metric dd {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.metric[data-alert='true'] dd {
+  color: var(--risk-3);
+}
+
+.unit {
+  color: var(--text-3);
+  font-size: var(--text-2xs);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+
+.arrival {
+  color: var(--text-2);
+}
+
+.worst {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+}

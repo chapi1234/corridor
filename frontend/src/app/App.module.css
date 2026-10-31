@@ -1,0 +1,75 @@
+.app {
+  display: grid;
+  grid-template-rows: var(--header-h) 1fr;
+  height: 100%;
+}
+
+.main {
+  display: grid;
+  grid-template-columns: var(--panel-w) 1fr;
+  min-height: 0;
+}
+
+.panel {
+  min-height: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--line-1);
+  background: var(--bg-1);
+  scrollbar-gutter: stable;
+}
+
+.stage {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.mapArea {
+  position: relative;
+  min-height: 0;
+}
+
+.mapFallback {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-0);
+}
+
+.docks {
+  display: grid;
+}
+
+@media (max-width: 960px) {
+  .main {
+    --panel-w: 340px;
+  }
+}
+
+/* Phone: the map leads, the panel scrolls beneath it. */
+@media (max-width: 760px) {
+  .app {
+    height: auto;
+    min-height: 100%;
+  }
+
+  .main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .stage {
+    order: -1;
+    grid-template-rows: 56vh auto;
+  }
+
+  .main[data-results='false'] .stage {
+    grid-template-rows: 32vh;
+  }
+
+  .panel {
+    overflow: visible;
+    border-right: 0;
+    border-top: 1px solid var(--line-1);
+  }
+}

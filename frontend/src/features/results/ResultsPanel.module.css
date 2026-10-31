@@ -1,0 +1,101 @@
+.panel {
+  display: grid;
+  align-content: start;
+}
+
+.summary {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--line-1);
+}
+
+.trip {
+  display: grid;
+  min-width: 0;
+}
+
+.endpoints {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+
+.whatIf {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--line-1);
+}
+
+.whatIfHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+}
+
+.whatIfHeader h2 {
+  margin: 0;
+}
+
+.whatIfNote {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--text-2xs);
+}
+
+.warnings {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+  list-style: none;
+  border-bottom: 1px solid var(--line-1);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.warnings li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.warnings svg {
+  margin-top: 2px;
+  color: var(--warning);
+  flex: none;
+}
+
+.routes {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.routes h2 {
+  margin: 0;
+}
+
+.routeList {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.sources {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-3) var(--space-5) var(--space-6);
+  color: var(--text-3);
+  font-size: var(--text-2xs);
+}

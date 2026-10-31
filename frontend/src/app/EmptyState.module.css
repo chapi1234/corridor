@@ -1,0 +1,50 @@
+.overlay {
+  position: absolute;
+  inset: auto var(--space-6) var(--space-6);
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 220px));
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line-1);
+  background: var(--line-1);
+  list-style: none;
+  box-shadow: var(--shadow-float);
+}
+
+.card li {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--bg-1) 94%, transparent);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.card strong {
+  color: var(--text-1);
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.number {
+  color: var(--accent);
+  font-size: var(--text-2xs);
+}
+
+@media (max-width: 760px) {
+  .overlay {
+    display: none;
+  }
+}

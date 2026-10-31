@@ -1,0 +1,19 @@
+.bar {
+  display: flex;
+  gap: 1px;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: var(--bg-0);
+}
+
+.segment {
+  flex-basis: 0;
+  min-width: 2px;
+  background-color: var(--segment-color);
+}
+
+.segment[data-level='4'],
+.segment[data-level='unknown'] {
+  background-image: repeating-linear-gradient(-45deg, transparent 0 3px, rgb(0 0 0 / 0.3) 3px 5px);
+}
