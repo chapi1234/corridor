@@ -1,0 +1,47 @@
+{
+  "formatVersion": "0.0.12",
+  "routes": [
+    {
+      "summary": {
+        "lengthInMeters": 20000,
+        "travelTimeInSeconds": 1200,
+        "trafficDelayInSeconds": 0,
+        "departureTime": "2026-11-03T06:00:00-07:00",
+        "arrivalTime": "2026-11-03T06:20:00-07:00"
+      },
+      "legs": [
+        {
+          "summary": { "lengthInMeters": 20000, "travelTimeInSeconds": 1200 },
+          "points": [
+            { "latitude": 39.7392, "longitude": -104.9903 },
+            { "latitude": 39.7392, "longitude": -104.9903 },
+            { "latitude": 39.7400, "longitude": -104.9000 },
+            { "latitude": 39.7410, "longitude": -104.8000 },
+            { "latitude": 39.7420, "longitude": -104.7563 }
+          ]
+        }
+      ],
+      "guidance": {
+        "instructions": [
+          { "routeOffsetInMeters": 0, "travelTimeInSeconds": 0, "roadNumbers": [] },
+          { "routeOffsetInMeters": 2000, "travelTimeInSeconds": 300, "roadNumbers": ["US-6"] },
+          { "routeOffsetInMeters": 5000, "travelTimeInSeconds": 450, "roadNumbers": ["I-70"] },
+          { "routeOffsetInMeters": 18000, "travelTimeInSeconds": 1100, "roadNumbers": ["CO-470"] },
+          { "routeOffsetInMeters": 20000, "travelTimeInSeconds": 1200 }
+        ]
+      }
+    },
+    {
+      "summary": { "lengthInMeters": 23000, "travelTimeInSeconds": 1500 },
+      "legs": [
+        {
+          "points": [
+            { "latitude": 39.7392, "longitude": -104.9903 },
+            { "latitude": 39.7600, "longitude": -104.8500 },
+            { "latitude": 39.7420, "longitude": -104.7563 }
+          ]
+        }
+      ]
+    }
+  ]
+}

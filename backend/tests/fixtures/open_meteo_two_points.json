@@ -1,0 +1,125 @@
+[
+  {
+    "latitude": 39.746895,
+    "longitude": -104.987076,
+    "generationtime_ms": 4.742622375488281,
+    "utc_offset_seconds": 0,
+    "timezone": "GMT",
+    "timezone_abbreviation": "GMT",
+    "elevation": 1597.0,
+    "hourly_units": {
+      "time": "unixtime",
+      "wind_speed_10m": "mp/h",
+      "wind_gusts_10m": "mp/h",
+      "rain": "inch",
+      "showers": "inch",
+      "snowfall": "inch",
+      "temperature_2m": "°F",
+      "weather_code": "wmo code"
+    },
+    "hourly": {
+      "time": [
+        1793620800,
+        1793624400,
+        1793628000
+      ],
+      "wind_speed_10m": [
+        5.1,
+        5.9,
+        6.3
+      ],
+      "wind_gusts_10m": [
+        6.5,
+        9.8,
+        11.9
+      ],
+      "rain": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "showers": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "snowfall": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "temperature_2m": [
+        52.3,
+        53.4,
+        53.2
+      ],
+      "weather_code": [
+        2,
+        3,
+        3
+      ]
+    }
+  },
+  {
+    "latitude": 41.879498,
+    "longitude": -87.64974,
+    "generationtime_ms": 2.8471946716308594,
+    "utc_offset_seconds": 0,
+    "timezone": "GMT",
+    "timezone_abbreviation": "GMT",
+    "elevation": 265.0,
+    "location_id": 1,
+    "hourly_units": {
+      "time": "unixtime",
+      "wind_speed_10m": "mp/h",
+      "wind_gusts_10m": "mp/h",
+      "rain": "inch",
+      "showers": "inch",
+      "snowfall": "inch",
+      "temperature_2m": "°F",
+      "weather_code": "wmo code"
+    },
+    "hourly": {
+      "time": [
+        1793620800,
+        1793624400,
+        1793628000
+      ],
+      "wind_speed_10m": [
+        7.4,
+        8.5,
+        8.6
+      ],
+      "wind_gusts_10m": [
+        18.0,
+        19.2,
+        18.3
+      ],
+      "rain": [
+        0.0,
+        0.004,
+        0.0
+      ],
+      "showers": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "snowfall": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "temperature_2m": [
+        54.7,
+        54.9,
+        55.3
+      ],
+      "weather_code": [
+        3,
+        51,
+        3
+      ]
+    }
+  }
+]

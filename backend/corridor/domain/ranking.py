@@ -10,6 +10,10 @@ Ranking is lexicographic over:
 
 Values are quantised before comparison (whole miles, 0.05 risk steps, whole seconds) so
 negligible differences fall through to the next criterion and the order stays total.
+
+The explanation compares the winner with the route a driver would naturally weigh it
+against: the fastest route when the recommendation is not the fastest (the safety vs
+time trade-off), otherwise the runner-up.
 """
 
 from __future__ import annotations
@@ -72,8 +76,12 @@ RankKey = tuple[int, int, int, int, int]
 class Ranking:
     order: tuple[str, ...]
     recommended: str
+    competitor: str | None
+    """The route the explanation compares against; ``None`` when only one route exists."""
     deciding: Criterion | None
-    """First criterion separating the winner from the runner-up; ``None`` on a full tie."""
+    """First criterion separating the winner from the competitor; ``None`` on a full tie."""
+    beats_on: dict[str, Criterion | None]
+    """For every other route, the first criterion on which the recommendation wins."""
     keys: dict[str, RankKey]
     reason: str
     no_safe_route: bool
@@ -129,35 +137,44 @@ def rank(routes: Sequence[RouteRisk]) -> Ranking:
     keys = {route.route_id: rank_key(route) for route in routes}
     ordered = sorted(routes, key=lambda r: keys[r.route_id])
     best = ordered[0]
-    runner_up = ordered[1] if len(ordered) > 1 else None
+    others = ordered[1:]
 
-    deciding: Criterion | None = None
-    if runner_up is not None:
-        best_key, other_key = keys[best.route_id], keys[runner_up.route_id]
-        deciding = next(
-            (c for c in Criterion if best_key[c] != other_key[c]),
-            None,
-        )
+    def first_difference(other: RouteRisk) -> Criterion | None:
+        best_key, other_key = keys[best.route_id], keys[other.route_id]
+        return next((c for c in Criterion if best_key[c] != other_key[c]), None)
+
+    beats_on = {other.route_id: first_difference(other) for other in others}
+    competitor = _competitor(best, others)
+    deciding = beats_on[competitor.route_id] if competitor else None
 
     return Ranking(
         order=tuple(r.route_id for r in ordered),
         recommended=best.route_id,
+        competitor=competitor.route_id if competitor else None,
         deciding=deciding,
+        beats_on=beats_on,
         keys=keys,
-        reason=explain(best, runner_up, deciding),
+        reason=explain(best, competitor, deciding),
         no_safe_route=all(keys[r.route_id][Criterion.NO_TRAVEL_MILES] > 0 for r in routes),
     )
 
 
-def explain(best: RouteRisk, runner_up: RouteRisk | None, deciding: Criterion | None) -> str:
+def _competitor(best: RouteRisk, others: Sequence[RouteRisk]) -> RouteRisk | None:
+    if not others:
+        return None
+    fastest = min(others, key=lambda r: r.duration_s)
+    return fastest if fastest.duration_s < best.duration_s else others[0]
+
+
+def explain(best: RouteRisk, competitor: RouteRisk | None, deciding: Criterion | None) -> str:
     """One-sentence, deterministic justification of the recommendation."""
-    if runner_up is None:
+    if competitor is None:
         return "Only one route is available for this trip."
-    other = f"Route {runner_up.route_id}"
+    other = f"Route {competitor.route_id}"
     if deciding is None:
         return f"Routes are equivalent on every criterion; Route {best.route_id} is listed first."
 
-    best_key, other_key = rank_key(best), rank_key(runner_up)
+    best_key, other_key = rank_key(best), rank_key(competitor)
     diff = other_key[deciding] - best_key[deciding]
 
     match deciding:
@@ -171,7 +188,7 @@ def explain(best: RouteRisk, runner_up: RouteRisk | None, deciding: Criterion | 
         case Criterion.AVERAGE_RISK:
             assert best.average_risk is not None
             other_avg = (
-                "unknown" if runner_up.average_risk is None else f"{runner_up.average_risk:.2f}"
+                "unknown" if competitor.average_risk is None else f"{competitor.average_risk:.2f}"
             )
             return (
                 f"Lower overall weather risk than {other} "
@@ -193,6 +210,8 @@ def assign_tags(routes: Sequence[RouteRisk], ranking: Ranking) -> dict[str, list
 
 
 def format_duration(seconds: float) -> str:
+    if seconds < 60:
+        return "under 1 min"
     minutes = round(seconds / 60)
     hours, minutes = divmod(minutes, 60)
     if hours == 0:

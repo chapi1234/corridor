@@ -121,6 +121,20 @@ def test_no_safe_route_flag() -> None:
     assert ranking.recommended == "B"
 
 
+def test_explains_against_fastest_route_when_recommendation_is_slower() -> None:
+    fastest = route("A", severe=40, hours=8)
+    clean = route("B", hours=10)
+    also_clean = route("C", hours=10.01)
+
+    ranking = rank([fastest, clean, also_clean])
+
+    assert ranking.recommended == "B"
+    assert ranking.competitor == "A"
+    assert ranking.deciding == Criterion.SEVERE_MILES
+    assert ranking.reason == "Avoids 40 Severe miles that Route A crosses."
+    assert ranking.beats_on == {"A": Criterion.SEVERE_MILES, "C": Criterion.DURATION}
+
+
 def test_full_tie_and_single_route() -> None:
     assert rank([route("A"), route("B")]).deciding is None
     single = rank([route("A")])
@@ -162,7 +176,8 @@ def test_tags() -> None:
 
 
 @pytest.mark.parametrize(
-    ("seconds", "text"), [(60, "1 min"), (2520, "42 min"), (3900, "1 h 05 min")]
+    ("seconds", "text"),
+    [(20, "under 1 min"), (60, "1 min"), (2520, "42 min"), (3900, "1 h 05 min")],
 )
 def test_format_duration(seconds: float, text: str) -> None:
     assert format_duration(seconds) == text
