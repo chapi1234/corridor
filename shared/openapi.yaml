@@ -1,0 +1,692 @@
+openapi: 3.0.3
+info:
+  title: Corridor API
+  version: 1.0.0
+  description: 'Weather-aware truck routing: routes, ETA-time weather, risk and recommendation.'
+paths:
+  /api/v1/geocode:
+    get:
+      operationId: v1_geocode_retrieve
+      summary: Autocomplete places (US & Canada)
+      parameters:
+      - in: query
+        name: near_lat
+        schema:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+      - in: query
+        name: near_lon
+        schema:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+      - in: query
+        name: q
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 120
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeocodeResponse'
+          description: ''
+  /api/v1/plans:
+    post:
+      operationId: v1_plans_create
+      description: Returns up to three routes with checkpoints sampled at the chosen
+        interval, the forecast at each checkpoint's ETA, risk levels, a recommendation
+        and a 0-48 h corridor heatmap.
+      summary: Plan weather-aware truck routes
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanRequestRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanResponse'
+          description: ''
+  /api/v1/reverse:
+    get:
+      operationId: v1_reverse_retrieve
+      summary: Nearest locality for a coordinate
+      parameters:
+      - in: query
+        name: lat
+        schema:
+          type: number
+          format: double
+        required: true
+      - in: query
+        name: lon
+        schema:
+          type: number
+          format: double
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReverseResponse'
+          description: ''
+components:
+  schemas:
+    Checkpoint:
+      type: object
+      properties:
+        index:
+          type: integer
+        mile:
+          type: number
+          format: double
+        owned_miles:
+          type: number
+          format: double
+        lat:
+          type: number
+          format: double
+        lon:
+          type: number
+          format: double
+        eta:
+          $ref: '#/components/schemas/LocalTime'
+        elapsed_s:
+          type: integer
+        line_fraction:
+          type: number
+          format: double
+          maximum: 1
+          minimum: 0
+        weather:
+          allOf:
+          - $ref: '#/components/schemas/Weather'
+          nullable: true
+        risk:
+          allOf:
+          - $ref: '#/components/schemas/Risk'
+          nullable: true
+        hourly:
+          allOf:
+          - $ref: '#/components/schemas/HourlyWindow'
+          nullable: true
+      required:
+      - elapsed_s
+      - eta
+      - hourly
+      - index
+      - lat
+      - line_fraction
+      - lon
+      - mile
+      - owned_miles
+      - risk
+      - weather
+    CodeEnum:
+      enum:
+      - fewer_routes
+      - forecast_unavailable
+      type: string
+      description: |-
+        * `fewer_routes` - fewer_routes
+        * `forecast_unavailable` - forecast_unavailable
+    DecidingCriterionEnum:
+      enum:
+      - no_travel_miles
+      - severe_miles
+      - high_miles
+      - average_risk
+      - duration
+      type: string
+      description: |-
+        * `no_travel_miles` - no_travel_miles
+        * `severe_miles` - severe_miles
+        * `high_miles` - high_miles
+        * `average_risk` - average_risk
+        * `duration` - duration
+    DriverEnum:
+      enum:
+      - wind
+      - rain
+      - snow
+      type: string
+      description: |-
+        * `wind` - wind
+        * `rain` - rain
+        * `snow` - snow
+    FactorLevels:
+      type: object
+      properties:
+        wind:
+          type: integer
+          maximum: 4
+          minimum: 0
+        rain:
+          type: integer
+          maximum: 4
+          minimum: 0
+        snow:
+          type: integer
+          maximum: 4
+          minimum: 0
+      required:
+      - rain
+      - snow
+      - wind
+    GeocodeResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlaceResult'
+      required:
+      - results
+    Heatmap:
+      type: object
+      properties:
+        base_time:
+          type: string
+        hours:
+          type: integer
+        points:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+              format: double
+        gust_mph_x10:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+        rain_in_hr_x1000:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+        snow_in_hr_x100:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+        missing:
+          type: integer
+      required:
+      - base_time
+      - gust_mph_x10
+      - hours
+      - missing
+      - points
+      - rain_in_hr_x1000
+      - snow_in_hr_x100
+    HourlyWindow:
+      type: object
+      properties:
+        start:
+          type: string
+        gust_mph:
+          type: array
+          items:
+            type: number
+            format: double
+            nullable: true
+        rain_in_hr:
+          type: array
+          items:
+            type: number
+            format: double
+            nullable: true
+        snow_in_hr:
+          type: array
+          items:
+            type: number
+            format: double
+            nullable: true
+      required:
+      - gust_mph
+      - rain_in_hr
+      - snow_in_hr
+      - start
+    Inputs:
+      type: object
+      properties:
+        origin:
+          $ref: '#/components/schemas/Place'
+        destination:
+          $ref: '#/components/schemas/Place'
+        load_lb:
+          type: number
+          format: double
+        interval_mi:
+          type: integer
+        wind_metric:
+          type: string
+      required:
+      - destination
+      - interval_mi
+      - load_lb
+      - origin
+      - wind_metric
+    IntervalMiEnum:
+      enum:
+      - 10
+      - 25
+      - 50
+      type: integer
+      description: |-
+        * `10` - 10
+        * `25` - 25
+        * `50` - 50
+    LoadRuleEnum:
+      enum:
+      - wind_45_54_over_30k_lb
+      - wind_35_44_over_40k_lb
+      type: string
+      description: |-
+        * `wind_45_54_over_30k_lb` - wind_45_54_over_30k_lb
+        * `wind_35_44_over_40k_lb` - wind_35_44_over_40k_lb
+    LocalTime:
+      type: object
+      properties:
+        utc:
+          type: string
+          description: ISO 8601, UTC
+        local:
+          type: string
+          description: ISO 8601 with the local offset
+        tz:
+          type: string
+          description: IANA time zone
+      required:
+      - local
+      - tz
+      - utc
+    Meta:
+      type: object
+      properties:
+        timings_ms:
+          type: object
+          additionalProperties:
+            type: integer
+        routing_source:
+          type: string
+        weather_source:
+          type: string
+      required:
+      - routing_source
+      - timings_ms
+      - weather_source
+    NullEnum:
+      enum:
+      - null
+    Place:
+      type: object
+      properties:
+        label:
+          type: string
+          maxLength: 200
+        lat:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        lon:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+      required:
+      - label
+      - lat
+      - lon
+    PlaceRequest:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 200
+        lat:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        lon:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+      required:
+      - label
+      - lat
+      - lon
+    PlaceResult:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        sublabel:
+          type: string
+        lat:
+          type: number
+          format: double
+        lon:
+          type: number
+          format: double
+      required:
+      - id
+      - label
+      - lat
+      - lon
+      - sublabel
+    PlanRequestRequest:
+      type: object
+      properties:
+        origin:
+          $ref: '#/components/schemas/PlaceRequest'
+        destination:
+          $ref: '#/components/schemas/PlaceRequest'
+        departure_local:
+          type: string
+          minLength: 1
+          description: 'Wall-clock departure at the origin, without offset: YYYY-MM-DDTHH:MM.'
+        load_lb:
+          type: number
+          format: double
+          maximum: 120000
+          minimum: 0
+        interval_mi:
+          $ref: '#/components/schemas/IntervalMiEnum'
+      required:
+      - departure_local
+      - destination
+      - interval_mi
+      - load_lb
+      - origin
+    PlanResponse:
+      type: object
+      properties:
+        plan_id:
+          type: string
+        generated_at:
+          type: string
+        departure:
+          $ref: '#/components/schemas/LocalTime'
+        inputs:
+          $ref: '#/components/schemas/Inputs'
+        routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Route'
+        recommendation:
+          $ref: '#/components/schemas/Recommendation'
+        heatmap:
+          $ref: '#/components/schemas/Heatmap'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Warning'
+        meta:
+          $ref: '#/components/schemas/Meta'
+      required:
+      - departure
+      - generated_at
+      - heatmap
+      - inputs
+      - meta
+      - plan_id
+      - recommendation
+      - routes
+      - warnings
+    Recommendation:
+      type: object
+      properties:
+        route_id:
+          type: string
+        competitor_id:
+          type: string
+          nullable: true
+        deciding_criterion:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/DecidingCriterionEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        beats_on:
+          type: object
+          additionalProperties:
+            enum:
+            - no_travel_miles
+            - severe_miles
+            - high_miles
+            - average_risk
+            - duration
+            - null
+            type: string
+            description: |-
+              * `no_travel_miles` - no_travel_miles
+              * `severe_miles` - severe_miles
+              * `high_miles` - high_miles
+              * `average_risk` - average_risk
+              * `duration` - duration
+            nullable: true
+        order:
+          type: array
+          items:
+            type: string
+        criteria:
+          type: array
+          items:
+            type: string
+        keys:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: integer
+        reason:
+          type: string
+        no_safe_route:
+          type: boolean
+      required:
+      - beats_on
+      - competitor_id
+      - criteria
+      - deciding_criterion
+      - keys
+      - no_safe_route
+      - order
+      - reason
+      - route_id
+    ReverseResponse:
+      type: object
+      properties:
+        label:
+          type: string
+          nullable: true
+      required:
+      - label
+    Risk:
+      type: object
+      properties:
+        level:
+          type: integer
+          maximum: 4
+          minimum: 0
+        index:
+          type: number
+          format: double
+          maximum: 5
+          minimum: 0
+        driver:
+          $ref: '#/components/schemas/DriverEnum'
+        factors:
+          $ref: '#/components/schemas/FactorLevels'
+        load_rule:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/LoadRuleEnum'
+          - $ref: '#/components/schemas/NullEnum'
+      required:
+      - driver
+      - factors
+      - index
+      - level
+      - load_rule
+    Route:
+      type: object
+      properties:
+        id:
+          type: string
+        source:
+          $ref: '#/components/schemas/SourceEnum'
+        distance_mi:
+          type: number
+          format: double
+        duration_s:
+          type: integer
+        arrival:
+          $ref: '#/components/schemas/LocalTime'
+        highways:
+          type: array
+          items:
+            type: string
+        geometry:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+              format: double
+            maxItems: 2
+            minItems: 2
+          description: Simplified [lon, lat] pairs.
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagsEnum'
+        summary:
+          $ref: '#/components/schemas/RouteSummary'
+        checkpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/Checkpoint'
+      required:
+      - arrival
+      - checkpoints
+      - distance_mi
+      - duration_s
+      - geometry
+      - highways
+      - id
+      - source
+      - summary
+      - tags
+    RouteSummary:
+      type: object
+      properties:
+        miles_by_level:
+          type: array
+          items:
+            type: number
+            format: double
+          description: Miles at Low, Moderate, High, Severe, No Travel.
+          maxItems: 5
+          minItems: 5
+        unknown_miles:
+          type: number
+          format: double
+        average_risk:
+          type: number
+          format: double
+          nullable: true
+        worst_checkpoint:
+          type: integer
+          nullable: true
+      required:
+      - average_risk
+      - miles_by_level
+      - unknown_miles
+      - worst_checkpoint
+    SourceEnum:
+      enum:
+      - primary
+      - alternative
+      - via
+      type: string
+      description: |-
+        * `primary` - primary
+        * `alternative` - alternative
+        * `via` - via
+    TagsEnum:
+      enum:
+      - recommended
+      - fastest
+      - shortest
+      - lowest_risk
+      type: string
+      description: |-
+        * `recommended` - recommended
+        * `fastest` - fastest
+        * `shortest` - shortest
+        * `lowest_risk` - lowest_risk
+    Warning:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/CodeEnum'
+        message:
+          type: string
+      required:
+      - code
+      - message
+    Weather:
+      type: object
+      properties:
+        wind_mph:
+          type: number
+          format: double
+        gust_mph:
+          type: number
+          format: double
+        rain_in_hr:
+          type: number
+          format: double
+        snow_in_hr:
+          type: number
+          format: double
+        temperature_f:
+          type: number
+          format: double
+        weather_code:
+          type: integer
+      required:
+      - gust_mph
+      - rain_in_hr
+      - snow_in_hr
+      - temperature_f
+      - weather_code
+      - wind_mph

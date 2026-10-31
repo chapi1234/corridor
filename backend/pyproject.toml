@@ -65,6 +65,11 @@ exclude = ["tests/"]
 module = ["corridor.domain.*", "corridor.planning.*"]
 strict = true
 
+# Serializer fields named ``label``/``source`` shadow typed attributes on DRF's Field stubs.
+[[tool.mypy.overrides]]
+module = ["corridor.api.serializers"]
+disable_error_code = ["assignment"]
+
 [[tool.mypy.overrides]]
 module = ["shapely.*", "pyproj.*", "timezonefinder.*", "environ.*"]
 ignore_missing_imports = true

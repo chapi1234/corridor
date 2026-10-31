@@ -217,6 +217,7 @@ class PlanningService:
                     Checkpoint(
                         position=position,
                         eta=eta,
+                        tz=self._timezone_at(position.point),
                         line_fraction=position.distance_m / total_m,
                         weather_point=weather_point,
                         weather=sample,

@@ -66,19 +66,19 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Corridor API",
-    "DESCRIPTION": "Weather-aware truck routing: routes, ETA-time weather, risk and recommendation.",
+    "DESCRIPTION": "Weather-aware truck routing: routes, ETA weather, risk and recommendation.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
-    "ENUM_NAME_OVERRIDES": {
-        "LevelEnum": "corridor.domain.risk.Level",
-    },
 }
 
 # --------------------------------------------------------------------- integrations
 TOMTOM_API_KEY = env("TOMTOM_API_KEY", default="")
 OPEN_METEO_BASE_URL = env("OPEN_METEO_BASE_URL", default="https://api.open-meteo.com/v1/forecast")
 TOMTOM_BASE_URL = env("TOMTOM_BASE_URL", default="https://api.tomtom.com")
+OPEN_METEO_API_KEY = env("OPEN_METEO_API_KEY", default="")
+
+APP_VERSION = env("APP_VERSION", default="dev")
 
 LOGGING = {
     "version": 1,

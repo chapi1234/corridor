@@ -41,6 +41,8 @@ class HourlyWindow:
 class Checkpoint:
     position: CheckpointPosition
     eta: datetime
+    tz: ZoneInfo
+    """Local time zone at the checkpoint, for displaying its ETA."""
     line_fraction: float
     weather_point: LatLon
     weather: WeatherSample | None
