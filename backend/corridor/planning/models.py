@@ -71,6 +71,8 @@ class HeatmapFrames:
 
     base_time: datetime
     points: tuple[LatLon, ...]
+    spacing_m: float
+    """Grid spacing; lets the client size heatmap kernels to blend neighbouring points."""
     gust_mph_x10: tuple[tuple[int, ...], ...]
     rain_in_hr_x1000: tuple[tuple[int, ...], ...]
     snow_in_hr_x100: tuple[tuple[int, ...], ...]

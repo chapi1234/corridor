@@ -109,7 +109,7 @@ class PlanningService:
         step = self._config.weather_grid_deg
         with _timed(timings, "weather"):
             locations = {snap(p.point, step) for route in positions for p in route}
-            locations |= {snap(p, step) for p in grid}
+            locations |= {snap(p, step) for p in grid.points}
             forecasts = await self._weather.hourly_forecast(
                 sorted(locations, key=_coords), start=start, end=end
             )
@@ -122,10 +122,11 @@ class PlanningService:
             tags = assign_tags([r.risk for r in routes], ranking)
             routes = [replace(r, tags=tuple(tags[r.id])) for r in routes]
             heatmap = build_frames(
-                grid,
-                {p: forecasts[snap(p, step)] for p in grid if snap(p, step) in forecasts},
+                grid.points,
+                {p: forecasts[snap(p, step)] for p in grid.points if snap(p, step) in forecasts},
                 base_time=base_time,
                 hours=self._config.heatmap_hours,
+                spacing_m=grid.spacing_m,
             )
 
         return Plan(

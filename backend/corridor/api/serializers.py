@@ -193,6 +193,7 @@ class HeatmapSerializer(serializers.Serializer[None]):
     base_time = serializers.CharField()
     hours = serializers.IntegerField()
     points = serializers.ListField(child=serializers.ListField(child=serializers.FloatField()))
+    spacing_m = serializers.FloatField(help_text="Grid spacing in metres.")
     gust_mph_x10 = serializers.ListField(
         child=serializers.ListField(child=serializers.IntegerField())
     )

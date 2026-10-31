@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Corridor API
   version: 1.0.0
-  description: 'Weather-aware truck routing: routes, ETA-time weather, risk and recommendation.'
+  description: 'Weather-aware truck routing: routes, ETA weather, risk and recommendation.'
 paths:
   /api/v1/geocode:
     get:
@@ -213,6 +213,10 @@ components:
             items:
               type: number
               format: double
+        spacing_m:
+          type: number
+          format: double
+          description: Grid spacing in metres.
         gust_mph_x10:
           type: array
           items:
@@ -241,6 +245,7 @@ components:
       - points
       - rain_in_hr_x1000
       - snow_in_hr_x100
+      - spacing_m
     HourlyWindow:
       type: object
       properties:

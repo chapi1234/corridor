@@ -23,6 +23,7 @@ def build_frames(
     *,
     base_time: datetime,
     hours: int,
+    spacing_m: float,
 ) -> HeatmapFrames:
     """Sample every grid point at each whole forecast hour after ``base_time``.
 
@@ -44,6 +45,7 @@ def build_frames(
     return HeatmapFrames(
         base_time=base_time,
         points=tuple(points),
+        spacing_m=spacing_m,
         gust_mph_x10=quantise(lambda s: s.gust_mph, GUST_SCALE),
         rain_in_hr_x1000=quantise(lambda s: s.rain_in_hr, RAIN_SCALE),
         snow_in_hr_x100=quantise(lambda s: s.snow_in_hr, SNOW_SCALE),

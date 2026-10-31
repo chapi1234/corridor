@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 import numpy as np
 import shapely
@@ -17,9 +18,15 @@ _SIMPLIFY_M = 1_000.0
 _HEX_ROW_FACTOR = math.sqrt(3) / 2
 
 
+@dataclass(frozen=True, slots=True)
+class CorridorGrid:
+    points: list[LatLon]
+    spacing_m: float
+
+
 def corridor_grid(
     lines: Sequence[LineString], projection: LocalProjection, config: PlanningConfig
-) -> list[LatLon]:
+) -> CorridorGrid:
     """Hexagonal grid of points covering the union of buffers around ``lines``.
 
     Spacing adapts to the corridor's area so the point count stays near the target
@@ -39,7 +46,7 @@ def corridor_grid(
     ys = np.repeat(rows, len(cols))
 
     inside = shapely.contains_xy(area, xs, ys)
-    return projection.to_latlon(xs[inside], ys[inside])
+    return CorridorGrid(projection.to_latlon(xs[inside], ys[inside]), spacing)
 
 
 def snap(point: LatLon, step_deg: float) -> LatLon:

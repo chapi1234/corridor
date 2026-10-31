@@ -67,6 +67,7 @@ def present_plan(plan: Plan) -> dict[str, Any]:
             "base_time": _iso_utc(plan.heatmap.base_time),
             "hours": len(plan.heatmap.gust_mph_x10),
             "points": [_lonlat(p.lon, p.lat) for p in plan.heatmap.points],
+            "spacing_m": round(plan.heatmap.spacing_m),
             "gust_mph_x10": [list(row) for row in plan.heatmap.gust_mph_x10],
             "rain_in_hr_x1000": [list(row) for row in plan.heatmap.rain_in_hr_x1000],
             "snow_in_hr_x100": [list(row) for row in plan.heatmap.snow_in_hr_x100],
