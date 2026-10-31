@@ -1,0 +1,44 @@
+{
+  "description": "Risk classification cases shared by backend (pytest) and frontend (vitest) to guarantee parity. Levels: 0 Low, 1 Moderate, 2 High, 3 Severe, 4 No Travel.",
+  "cases": [
+    { "name": "calm", "gust": 0, "rain": 0, "snow": 0, "load": 0, "level": 0, "driver": "wind", "load_rule": null },
+
+    { "name": "wind just below moderate", "gust": 24.99, "rain": 0, "snow": 0, "load": 80000, "level": 0, "driver": "wind", "load_rule": null },
+    { "name": "wind moderate edge", "gust": 25, "rain": 0, "snow": 0, "load": 0, "level": 1, "driver": "wind", "load_rule": null },
+    { "name": "wind 34.6 stays moderate (D3)", "gust": 34.6, "rain": 0, "snow": 0, "load": 80000, "level": 1, "driver": "wind", "load_rule": null },
+    { "name": "wind high edge, light load", "gust": 35, "rain": 0, "snow": 0, "load": 0, "level": 2, "driver": "wind", "load_rule": null },
+    { "name": "wind high edge, exactly 40k (D8)", "gust": 35, "rain": 0, "snow": 0, "load": 40000, "level": 2, "driver": "wind", "load_rule": null },
+    { "name": "wind high edge, 40,001 lb escalates", "gust": 35, "rain": 0, "snow": 0, "load": 40001, "level": 3, "driver": "wind", "load_rule": "wind_35_44_over_40k_lb" },
+    { "name": "wind 44.9 with 35k stays high (D7)", "gust": 44.9, "rain": 0, "snow": 0, "load": 35000, "level": 2, "driver": "wind", "load_rule": null },
+    { "name": "wind 44.9 with 45k is severe", "gust": 44.9, "rain": 0, "snow": 0, "load": 45000, "level": 3, "driver": "wind", "load_rule": "wind_35_44_over_40k_lb" },
+    { "name": "wind severe edge, empty", "gust": 45, "rain": 0, "snow": 0, "load": 0, "level": 3, "driver": "wind", "load_rule": null },
+    { "name": "wind severe edge, exactly 30k (D8)", "gust": 45, "rain": 0, "snow": 0, "load": 30000, "level": 3, "driver": "wind", "load_rule": null },
+    { "name": "wind severe edge, 30,001 lb no travel", "gust": 45, "rain": 0, "snow": 0, "load": 30001, "level": 4, "driver": "wind", "load_rule": "wind_45_54_over_30k_lb" },
+    { "name": "wind 54.9 empty", "gust": 54.9, "rain": 0, "snow": 0, "load": 0, "level": 3, "driver": "wind", "load_rule": null },
+    { "name": "wind 54.9 heavy", "gust": 54.9, "rain": 0, "snow": 0, "load": 50000, "level": 4, "driver": "wind", "load_rule": "wind_45_54_over_30k_lb" },
+    { "name": "wind 55 any load", "gust": 55, "rain": 0, "snow": 0, "load": 0, "level": 4, "driver": "wind", "load_rule": null },
+    { "name": "wind 80 any load", "gust": 80, "rain": 0, "snow": 0, "load": 10000, "level": 4, "driver": "wind", "load_rule": null },
+
+    { "name": "rain just below moderate", "gust": 0, "rain": 0.099, "snow": 0, "load": 0, "level": 0, "driver": "rain", "load_rule": null },
+    { "name": "rain moderate edge", "gust": 0, "rain": 0.1, "snow": 0, "load": 0, "level": 1, "driver": "rain", "load_rule": null },
+    { "name": "rain 0.249 moderate", "gust": 0, "rain": 0.249, "snow": 0, "load": 0, "level": 1, "driver": "rain", "load_rule": null },
+    { "name": "rain 0.25 high (D2)", "gust": 0, "rain": 0.25, "snow": 0, "load": 0, "level": 2, "driver": "rain", "load_rule": null },
+    { "name": "rain 0.50 severe (D2)", "gust": 0, "rain": 0.5, "snow": 0, "load": 0, "level": 3, "driver": "rain", "load_rule": null },
+    { "name": "rain 1.00 severe (strict no travel)", "gust": 0, "rain": 1.0, "snow": 0, "load": 0, "level": 3, "driver": "rain", "load_rule": null },
+    { "name": "rain 1.0001 no travel", "gust": 0, "rain": 1.0001, "snow": 0, "load": 0, "level": 4, "driver": "rain", "load_rule": null },
+    { "name": "rain heavy load irrelevant", "gust": 0, "rain": 0.3, "snow": 0, "load": 80000, "level": 2, "driver": "rain", "load_rule": null },
+
+    { "name": "snow 0.49 low", "gust": 0, "rain": 0, "snow": 0.49, "load": 0, "level": 0, "driver": "snow", "load_rule": null },
+    { "name": "snow 0.5 moderate", "gust": 0, "rain": 0, "snow": 0.5, "load": 0, "level": 1, "driver": "snow", "load_rule": null },
+    { "name": "snow 1.0 high", "gust": 0, "rain": 0, "snow": 1.0, "load": 0, "level": 2, "driver": "snow", "load_rule": null },
+    { "name": "snow 2.0 severe", "gust": 0, "rain": 0, "snow": 2.0, "load": 0, "level": 3, "driver": "snow", "load_rule": null },
+    { "name": "snow 3.0 severe (strict no travel)", "gust": 0, "rain": 0, "snow": 3.0, "load": 0, "level": 3, "driver": "snow", "load_rule": null },
+    { "name": "snow 3.01 no travel", "gust": 0, "rain": 0, "snow": 3.01, "load": 0, "level": 4, "driver": "snow", "load_rule": null },
+
+    { "name": "rain drives over moderate wind", "gust": 30, "rain": 0.6, "snow": 0, "load": 10000, "level": 3, "driver": "rain", "load_rule": null },
+    { "name": "wind load rule beats severe snow", "gust": 50, "rain": 0, "snow": 2.5, "load": 35000, "level": 4, "driver": "wind", "load_rule": "wind_45_54_over_30k_lb" },
+    { "name": "load rule reported even when rain is worse", "gust": 38, "rain": 1.5, "snow": 0, "load": 42000, "level": 4, "driver": "rain", "load_rule": "wind_35_44_over_40k_lb" },
+    { "name": "snow drives within same level by index", "gust": 36, "rain": 0, "snow": 1.9, "load": 0, "level": 2, "driver": "snow", "load_rule": null },
+    { "name": "wind drives within same level by index", "gust": 44, "rain": 0, "snow": 1.1, "load": 0, "level": 2, "driver": "wind", "load_rule": null }
+  ]
+}

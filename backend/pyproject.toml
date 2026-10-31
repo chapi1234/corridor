@@ -1,0 +1,92 @@
+[project]
+name = "corridor-backend"
+version = "0.1.0"
+description = "Weather-aware truck routing API"
+readme = "../README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "django>=5.2,<6",
+  "djangorestframework>=3.16",
+  "drf-spectacular>=0.28",
+  "django-cors-headers>=4.6",
+  "django-environ>=0.12",
+  "httpx>=0.28",
+  "shapely>=2.1",
+  "pyproj>=3.7",
+  "timezonefinder>=6.5",
+  "redis>=5.2",
+  "uvicorn[standard]>=0.34",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "pytest-django>=4.10",
+  "pytest-asyncio>=0.25",
+  "pytest-cov>=6.0",
+  "hypothesis>=6.125",
+  "respx>=0.22",
+  "ruff>=0.9",
+  "mypy>=1.15",
+  "django-stubs[compatible-mypy]>=5.1",
+  "djangorestframework-stubs[compatible-mypy]>=3.15",
+]
+
+[tool.uv]
+package = false
+
+# ---------------------------------------------------------------- ruff
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "C4", "PT", "RET", "DTZ", "N"]
+ignore = ["RUF012"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR2004"]
+"config/settings/*.py" = ["F403", "F405"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["corridor", "config"]
+
+# ---------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+exclude = ["tests/"]
+
+[[tool.mypy.overrides]]
+module = ["corridor.domain.*", "corridor.planning.*"]
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["shapely.*", "pyproj.*", "timezonefinder.*", "environ.*"]
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+# ---------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra --strict-markers"
+filterwarnings = ["error::RuntimeWarning"]
+
+[tool.coverage.run]
+source = ["corridor"]
+branch = true
+
+[tool.coverage.report]
+skip_covered = true
+show_missing = true
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError", "\\.\\.\\."]
