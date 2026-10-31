@@ -77,6 +77,9 @@ TOMTOM_API_KEY = env("TOMTOM_API_KEY", default="")
 OPEN_METEO_BASE_URL = env("OPEN_METEO_BASE_URL", default="https://api.open-meteo.com/v1/forecast")
 TOMTOM_BASE_URL = env("TOMTOM_BASE_URL", default="https://api.tomtom.com")
 OPEN_METEO_API_KEY = env("OPEN_METEO_API_KEY", default="")
+# Keyless fallbacks used when TOMTOM_API_KEY is empty.
+OSRM_BASE_URL = env("OSRM_BASE_URL", default="https://router.project-osrm.org")
+PHOTON_BASE_URL = env("PHOTON_BASE_URL", default="https://photon.komoot.io")
 
 APP_VERSION = env("APP_VERSION", default="dev")
 

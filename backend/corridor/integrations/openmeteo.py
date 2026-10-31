@@ -54,8 +54,8 @@ class OpenMeteoClient:
         *,
         base_url: str,
         api_key: str = "",
-        batch_size: int = 100,
-        max_concurrency: int = 4,
+        batch_size: int = 40,
+        max_concurrency: int = 6,
         backoff_s: float = 0.4,
     ) -> None:
         self._http = http

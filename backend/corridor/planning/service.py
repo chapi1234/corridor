@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import math
 import time
 from collections.abc import Callable, Iterator, Sequence
@@ -22,7 +23,11 @@ from corridor.domain.weather import HourlySeries
 from corridor.planning.alternatives import DistinctRoutes, via_points
 from corridor.planning.config import DEFAULT_CONFIG, PlanningConfig
 from corridor.planning.corridor import corridor_grid, snap
-from corridor.planning.errors import InvalidPlanRequestError, RouteNotFoundError
+from corridor.planning.errors import (
+    InvalidPlanRequestError,
+    RouteNotFoundError,
+    UpstreamServiceError,
+)
 from corridor.planning.frames import build_frames
 from corridor.planning.models import (
     SAMPLING_INTERVALS_MI,
@@ -38,6 +43,8 @@ from corridor.planning.ports import RoutingProvider, WeatherProvider
 from corridor.planning.projection import LocalProjection
 
 ROUTE_LABELS = "ABCDEFGH"
+
+logger = logging.getLogger(__name__)
 
 
 def _utc_now() -> datetime:
@@ -130,6 +137,7 @@ class PlanningService:
             routes=tuple(routes),
             ranking=ranking,
             heatmap=heatmap,
+            routing_source=self._routing.display_name,
             warnings=tuple(self._warnings(routes)),
             timings_ms=timings,
         )
@@ -162,24 +170,31 @@ class PlanningService:
                 waypoints, depart_at=departure, gross_weight_kg=gross_kg, alternatives=alternatives
             )
 
-        primary = await fetch([origin, destination], target - 1)
-        projection = LocalProjection([p for c in primary for p in c.points])
+        async def fetch_via(via: LatLon) -> list[RouteCandidate]:
+            """Generated alternatives are best-effort: a failure leaves fewer options."""
+            try:
+                return (await fetch([origin, via, destination], 0))[:1]
+            except (RouteNotFoundError, UpstreamServiceError) as exc:
+                logger.info("Via route through %s skipped: %s", via, exc)
+                return []
+
+        # Via points depend only on the endpoints, so the first pair is requested alongside
+        # the primary route: one round trip instead of two when the provider offers few
+        # alternatives. The wider pair is only requested if still short of the target.
+        projection = LocalProjection([origin, destination])
+        vias = via_points(origin, destination, projection, self._config)
+        near_vias, far_vias = vias[:2], vias[2:]
+        primary, *via_results = await asyncio.gather(
+            fetch([origin, destination], target - 1), *(fetch_via(v) for v in near_vias)
+        )
+
         distinct = DistinctRoutes(projection, self._config)
         distinct.offer_all(primary)
-
-        vias = via_points(origin, destination, projection, self._config)
-        for batch in (vias[:2], vias[2:]):
-            if len(distinct) >= target or not batch:
-                break
-            results = await asyncio.gather(
-                *(fetch([origin, via, destination], 0) for via in batch), return_exceptions=True
-            )
-            for result in results:
-                if isinstance(result, RouteNotFoundError):
-                    continue
-                if isinstance(result, BaseException):
-                    raise result
-                distinct.offer_all(result[:1])
+        for result in via_results:
+            distinct.offer_all(result)
+        if len(distinct) < target and far_vias:
+            for result in await asyncio.gather(*(fetch_via(v) for v in far_vias)):
+                distinct.offer_all(result)
         return distinct.routes[:target]
 
     def _checkpoints(self, candidate: RouteCandidate, interval_mi: int) -> list[CheckpointPosition]:

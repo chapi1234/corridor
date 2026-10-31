@@ -32,6 +32,8 @@ MAX_HIGHWAYS: Final = 3
 
 
 class TomTomClient:
+    display_name: Final = "TomTom Routing (truck profile)"
+
     def __init__(
         self,
         http: httpx.AsyncClient,

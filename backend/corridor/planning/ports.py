@@ -12,6 +12,11 @@ from corridor.domain.weather import HourlySeries
 
 
 class RoutingProvider(Protocol):
+    @property
+    def display_name(self) -> str:
+        """Shown to users as the source of route data."""
+        ...
+
     async def calculate_routes(
         self,
         waypoints: Sequence[LatLon],

@@ -24,7 +24,7 @@ class PlanningConfig:
     """Two routes are duplicates if this share of each lies within the tolerance of the other."""
 
     corridor_half_width_m: float = 30_000
-    heatmap_target_points: int = 280
+    heatmap_target_points: int = 220
     heatmap_min_spacing_m: float = 10_000
     heatmap_max_spacing_m: float = 45_000
     heatmap_hours: int = 49

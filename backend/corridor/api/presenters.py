@@ -75,7 +75,7 @@ def present_plan(plan: Plan) -> dict[str, Any]:
         "warnings": [{"code": w.code.value, "message": w.message} for w in plan.warnings],
         "meta": {
             "timings_ms": plan.timings_ms,
-            "routing_source": "TomTom Routing (truck)",
+            "routing_source": plan.routing_source,
             "weather_source": "Open-Meteo forecast (best match)",
         },
     }

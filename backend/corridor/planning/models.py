@@ -97,5 +97,6 @@ class Plan:
     routes: tuple[PlannedRoute, ...]
     ranking: Ranking
     heatmap: HeatmapFrames
+    routing_source: str = ""
     warnings: tuple[PlanWarning, ...] = ()
     timings_ms: dict[str, int] = field(default_factory=dict)

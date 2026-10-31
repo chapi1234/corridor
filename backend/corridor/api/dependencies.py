@@ -1,6 +1,8 @@
 """Composition root: wires concrete providers into the planning service.
 
 Views resolve providers through these factories so tests can substitute fakes.
+TomTom (truck-aware) is used when ``TOMTOM_API_KEY`` is set; otherwise the keyless
+OSRM + Photon fallbacks keep the app fully functional for development and demos.
 """
 
 from __future__ import annotations
@@ -15,9 +17,11 @@ from django.core.cache import cache
 from corridor.integrations.cache import CachedGeocoder, CachedWeatherProvider
 from corridor.integrations.http import DEFAULT_TIMEOUT
 from corridor.integrations.openmeteo import OpenMeteoClient
+from corridor.integrations.osrm import OsrmClient
+from corridor.integrations.photon import PhotonClient
 from corridor.integrations.timezones import timezone_at
 from corridor.integrations.tomtom import TomTomClient
-from corridor.planning.ports import Geocoder
+from corridor.planning.ports import Geocoder, RoutingProvider
 from corridor.planning.service import PlanningService
 
 USER_AGENT = "corridor/1.0 (+https://github.com/)"
@@ -34,9 +38,7 @@ async def _http_client() -> AsyncIterator[httpx.AsyncClient]:
 @asynccontextmanager
 async def planning_service() -> AsyncIterator[PlanningService]:
     async with _http_client() as http:
-        routing = TomTomClient(
-            http, api_key=settings.TOMTOM_API_KEY, base_url=settings.TOMTOM_BASE_URL
-        )
+        routing = _routing_provider(http)
         weather = CachedWeatherProvider(
             OpenMeteoClient(
                 http,
@@ -51,7 +53,17 @@ async def planning_service() -> AsyncIterator[PlanningService]:
 @asynccontextmanager
 async def geocoder() -> AsyncIterator[Geocoder]:
     async with _http_client() as http:
-        client = TomTomClient(
+        inner: Geocoder = (
+            TomTomClient(http, api_key=settings.TOMTOM_API_KEY, base_url=settings.TOMTOM_BASE_URL)
+            if settings.TOMTOM_API_KEY
+            else PhotonClient(http, base_url=settings.PHOTON_BASE_URL)
+        )
+        yield CachedGeocoder(inner, cache)
+
+
+def _routing_provider(http: httpx.AsyncClient) -> RoutingProvider:
+    if settings.TOMTOM_API_KEY:
+        return TomTomClient(
             http, api_key=settings.TOMTOM_API_KEY, base_url=settings.TOMTOM_BASE_URL
         )
-        yield CachedGeocoder(client, cache)
+    return OsrmClient(http, base_url=settings.OSRM_BASE_URL)

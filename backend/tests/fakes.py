@@ -52,6 +52,7 @@ class FakeRouting:
 
     direct_alternatives: int = 0
     calls: list[tuple[LatLon, ...]] = field(default_factory=list)
+    display_name: str = "Fake routing"
 
     async def calculate_routes(
         self,
