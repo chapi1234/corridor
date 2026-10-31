@@ -1,30 +1,27 @@
 import * as Slider from '@radix-ui/react-slider'
 import { Pause, Play, SkipBack } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 
 import { formatInstant, formatMiles } from '@/domain/format'
 import { elapsedAtHour, frameInstant, hourOf, mileAtElapsed } from '@/domain/timeline'
 import { clamp } from '@/lib/math'
 import { useScoredPlan, useSelectedRoute } from '@/state/selectors'
-import { FORECAST_HOURS, useAppStore } from '@/state/store'
+import { FORECAST_HOURS, PLAYBACK_HOUR_MS, useAppStore, type PlaybackSpeed } from '@/state/store'
 import { IconButton } from '@/ui/Button'
 import { Segmented } from '@/ui/Segmented'
 
 import styles from './TimelineDock.module.css'
 
-const SPEEDS = [
+const SPEEDS: readonly { value: PlaybackSpeed; label: string }[] = [
   { value: 1, label: '1×' },
   { value: 2, label: '2×' },
   { value: 4, label: '4×' },
-] as const
-type Speed = (typeof SPEEDS)[number]['value']
-
-/** Wall-clock time per forecast hour at 1×. */
-const HOUR_MS_AT_1X = 800
+]
 const TICK_HOURS = [0, 6, 12, 18, 24, 30, 36, 42, 48]
 
-function usePlayback(speed: Speed) {
+function usePlayback() {
   const playing = useAppStore((s) => s.playing)
+  const speed = useAppStore((s) => s.playbackSpeed)
   useEffect(() => {
     if (!playing) return
     const timer = window.setInterval(() => {
@@ -34,7 +31,7 @@ function usePlayback(speed: Speed) {
         return
       }
       setForecastHour(forecastHour + 1)
-    }, HOUR_MS_AT_1X / speed)
+    }, PLAYBACK_HOUR_MS / speed)
     return () => window.clearInterval(timer)
   }, [playing, speed])
 }
@@ -47,8 +44,9 @@ export function TimelineDock() {
   const playing = useAppStore((s) => s.playing)
   const setForecastHour = useAppStore((s) => s.setForecastHour)
   const setPlaying = useAppStore((s) => s.setPlaying)
-  const [speed, setSpeed] = useState<Speed>(1)
-  usePlayback(speed)
+  const speed = useAppStore((s) => s.playbackSpeed)
+  const setSpeed = useAppStore((s) => s.setPlaybackSpeed)
+  usePlayback()
 
   if (!scored) return null
   const { plan } = scored
@@ -90,7 +88,7 @@ export function TimelineDock() {
             setForecastHour(0)
           }}
         />
-        <Segmented<Speed>
+        <Segmented<PlaybackSpeed>
           size="sm"
           label="Playback speed"
           value={speed}

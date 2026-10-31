@@ -76,7 +76,27 @@ export interface MapCallbacks {
   onOpenCheckpoint(ref: CheckpointRef): void
 }
 
+/**
+ * How the truck travels to a new forecast hour. Playback uses linear motion lasting exactly
+ * one tick, so consecutive hours chain into one continuous drive; manual scrubbing eases out.
+ */
+export interface HourTransition {
+  durationMs: number
+  easing: 'linear' | 'ease-out'
+}
+
+interface GhostTween {
+  fromS: number
+  toS: number
+  startMs: number
+  durationMs: number
+  easing: HourTransition['easing']
+}
+
 type FeatureCollection = GeoJSON.FeatureCollection<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>
+
+const HOUR_S = 3600
+const easeOutCubic = (t: number) => 1 - (1 - t) ** 3
 const emptyCollection = (): FeatureCollection => ({ type: 'FeatureCollection', features: [] })
 
 export class MapController {
@@ -93,6 +113,11 @@ export class MapController {
   private fittedPlanId: string | null = null
   private pendingPointer: MapMouseEvent | null = null
   private pointerFrame = 0
+  /** Elapsed driving time (s) the truck marker is drawn at; tweened between hours. */
+  private ghostElapsedS: number | null = null
+  private ghostTween: GhostTween | null = null
+  private ghostFrame = 0
+  private readonly reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')
 
   constructor(container: HTMLElement, theme: Theme, callbacks: MapCallbacks) {
     this.theme = theme
@@ -124,6 +149,7 @@ export class MapController {
 
   destroy(): void {
     cancelAnimationFrame(this.pointerFrame)
+    cancelAnimationFrame(this.ghostFrame)
     this.map.remove()
   }
 
@@ -156,14 +182,15 @@ export class MapController {
     this.renderHeatStyle()
   }
 
-  /** Called on every slider tick or playback frame: paint-property changes only. */
-  setHour(hour: number): void {
+  /** Called on every slider tick or playback step: paint-property changes only. */
+  setHour(hour: number, transition?: HourTransition): void {
     this.hour = hour
     if (!this.styleReady) return
     if (this.map.getLayer(LYR.heat)) {
       this.map.setPaintProperty(LYR.heat, 'heatmap-weight', ['get', `h${hour}`])
     }
-    this.renderGhost()
+    if (transition) this.driveGhost(transition)
+    else this.renderGhost()
   }
 
   setHover(target: HoverTarget | null): void {
@@ -517,16 +544,56 @@ export class MapController {
     ])
   }
 
+  /** Elapsed driving time at the current forecast hour, or null without a selected route. */
+  private targetElapsedS(): number | null {
+    const plan = this.plan?.scored.plan
+    if (!plan || !this.selectedTrack()) return null
+    const offsetS = (Date.parse(plan.heatmap.base_time) - Date.parse(plan.departure.utc)) / 1000
+    return offsetS + this.hour * HOUR_S
+  }
+
+  private selectedTrack(): RouteTrack | undefined {
+    const id = this.plan?.selectedRouteId
+    return id ? this.tracks.get(id) : undefined
+  }
+
+  /** Jump the truck to the current hour (plan or route changed). */
   private renderGhost(): void {
-    const view = this.plan
-    const track = view?.selectedRouteId ? this.tracks.get(view.selectedRouteId) : undefined
-    if (!view || !track) {
+    cancelAnimationFrame(this.ghostFrame)
+    this.ghostTween = null
+    this.drawGhost(this.targetElapsedS())
+  }
+
+  /** Drive the truck along the road from where it is now to the current hour. */
+  private driveGhost({ durationMs, easing }: HourTransition): void {
+    const toS = this.targetElapsedS()
+    const fromS = this.ghostElapsedS
+    if (toS === null || fromS === null || durationMs <= 0 || this.reducedMotion?.matches) {
+      this.renderGhost()
+      return
+    }
+    this.ghostTween = { fromS, toS, startMs: performance.now(), durationMs, easing }
+    cancelAnimationFrame(this.ghostFrame)
+    this.ghostFrame = requestAnimationFrame((now) => this.stepGhost(now))
+  }
+
+  private stepGhost(now: number): void {
+    const tween = this.ghostTween
+    if (!tween) return
+    const t = Math.min((now - tween.startMs) / tween.durationMs, 1)
+    const eased = tween.easing === 'linear' ? t : easeOutCubic(t)
+    this.drawGhost(tween.fromS + (tween.toS - tween.fromS) * eased)
+    if (t < 1) this.ghostFrame = requestAnimationFrame((next) => this.stepGhost(next))
+    else this.ghostTween = null
+  }
+
+  private drawGhost(elapsedS: number | null): void {
+    this.ghostElapsedS = elapsedS
+    const track = this.selectedTrack()
+    if (elapsedS === null || !track) {
       this.source(SRC.ghost).setData(emptyCollection())
       return
     }
-    const departureMs = Date.parse(view.scored.plan.departure.utc)
-    const frameMs = Date.parse(view.scored.plan.heatmap.base_time) + this.hour * 3_600_000
-    const elapsedS = (frameMs - departureMs) / 1000
     const [lon, lat, bearing] = track.pointAt(track.fractionAtElapsed(elapsedS))
     this.source(SRC.ghost).setData({
       type: 'Feature',

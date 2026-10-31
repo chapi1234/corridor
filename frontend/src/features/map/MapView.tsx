@@ -2,13 +2,22 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { buildFrames } from '@/domain/heatmap'
 import { useScoredPlan } from '@/state/selectors'
-import { useAppStore, type HoverTarget } from '@/state/store'
+import { PLAYBACK_HOUR_MS, useAppStore, type HoverTarget } from '@/state/store'
 
 import { LayerControl } from './LayerControl'
 import { Legend } from './Legend'
-import { MapController } from './mapController'
+import { MapController, type HourTransition } from './mapController'
 import { MapTooltip } from './MapTooltip'
 import styles from './MapView.module.css'
+
+/** Manual scrubbing glides briefly; playback moves for exactly one tick (see HourTransition). */
+const SCRUB_TRANSITION_MS = 280
+
+function hourTransition(playing: boolean, speed: number): HourTransition {
+  return playing
+    ? { durationMs: PLAYBACK_HOUR_MS / speed, easing: 'linear' }
+    : { durationMs: SCRUB_TRANSITION_MS, easing: 'ease-out' }
+}
 
 export default function MapView() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -35,7 +44,9 @@ export default function MapView() {
 
     // High-frequency state bypasses React rendering entirely.
     const unsubscribe = useAppStore.subscribe((state, previous) => {
-      if (state.forecastHour !== previous.forecastHour) controller.setHour(state.forecastHour)
+      if (state.forecastHour !== previous.forecastHour) {
+        controller.setHour(state.forecastHour, hourTransition(state.playing, state.playbackSpeed))
+      }
       if (state.hover !== previous.hover) controller.setHover(state.hover)
       if (state.openCheckpoint !== previous.openCheckpoint)
         controller.setActiveCheckpoint(state.openCheckpoint)

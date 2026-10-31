@@ -32,6 +32,7 @@ export class RouteTrack {
   private readonly fractions: Float64Array
   private readonly cpElapsed: number[]
   private readonly cpFractions: number[]
+  private readonly lengthM: number
 
   constructor(route: Route) {
     this.coords = route.geometry
@@ -40,6 +41,7 @@ export class RouteTrack {
       cumulative[i] = cumulative[i - 1]! + haversineM(this.coords[i - 1]!, this.coords[i]!)
     }
     const total = cumulative[cumulative.length - 1] || 1
+    this.lengthM = total
     this.fractions = cumulative.map((d) => d / total)
     this.cpElapsed = route.checkpoints.map((c) => c.elapsed_s)
     this.cpFractions = route.checkpoints.map((c) => c.line_fraction)
@@ -49,15 +51,29 @@ export class RouteTrack {
     return this.cpElapsed.at(-1) ?? 0
   }
 
-  /** [lon, lat, bearingDeg] at progress ``fraction`` along the line. */
-  pointAt(fraction: number): [number, number, number] {
+  /** [lon, lat] at progress ``fraction`` along the line. */
+  positionAt(fraction: number): [number, number] {
     const f = Math.min(Math.max(fraction, 0), 1)
     const i = Math.min(Math.max(bisectRight(this.fractions, f) - 1, 0), this.coords.length - 2)
     const [f0, f1] = [this.fractions[i]!, this.fractions[i + 1]!]
     const t = f1 > f0 ? (f - f0) / (f1 - f0) : 0
     const [a, b] = [this.coords[i]!, this.coords[i + 1]!]
-    const bearing = (Math.atan2(b[0]! - a[0]!, b[1]! - a[1]!) * 180) / Math.PI
-    return [lerp(a[0]!, b[0]!, t), lerp(a[1]!, b[1]!, t), bearing]
+    return [lerp(a[0]!, b[0]!, t), lerp(a[1]!, b[1]!, t)]
+  }
+
+  /**
+   * [lon, lat, bearingDeg] at progress ``fraction``. The heading looks ``lookaheadM`` along
+   * the road either side, so a moving marker turns smoothly instead of snapping to every
+   * short polyline segment.
+   */
+  pointAt(fraction: number, lookaheadM = 1500): [number, number, number] {
+    const [lon, lat] = this.positionAt(fraction)
+    const delta = lookaheadM / this.lengthM
+    const [lon0, lat0] = this.positionAt(fraction - delta)
+    const [lon1, lat1] = this.positionAt(fraction + delta)
+    const dx = (lon1 - lon0) * Math.cos((lat * Math.PI) / 180)
+    const bearing = (Math.atan2(dx, lat1 - lat0) * 180) / Math.PI
+    return [lon, lat, bearing]
   }
 
   /** Progress at ``elapsedS`` seconds after departure, interpolated between checkpoints. */

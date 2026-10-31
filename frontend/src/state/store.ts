@@ -25,6 +25,10 @@ export type Theme = 'night' | 'day'
 
 export const FORECAST_HOURS = 48
 
+export type PlaybackSpeed = 1 | 2 | 4
+/** Wall-clock time per forecast hour at 1× playback. */
+export const PLAYBACK_HOUR_MS = 800
+
 interface State {
   draft: TripDraft
   plan: PlanResponse | null
@@ -37,6 +41,7 @@ interface State {
   /** Forecast hour relative to the departure hour, 0..48 (D15). */
   forecastHour: number
   playing: boolean
+  playbackSpeed: PlaybackSpeed
   heatmap: { visible: boolean; variable: HeatmapVariable; opacity: number }
   rulesOpen: boolean
   theme: Theme
@@ -54,6 +59,7 @@ interface Actions {
   stepCheckpoint(delta: 1 | -1): void
   setForecastHour(hour: number): void
   setPlaying(playing: boolean): void
+  setPlaybackSpeed(speed: PlaybackSpeed): void
   updateHeatmap(patch: Partial<State['heatmap']>): void
   setRulesOpen(open: boolean): void
   setTheme(theme: Theme): void
@@ -94,6 +100,7 @@ export const useAppStore = create<State & Actions>()((set, get) => ({
   openCheckpoint: null,
   forecastHour: 0,
   playing: false,
+  playbackSpeed: 1,
   heatmap: { visible: true, variable: 'risk', opacity: 0.7 },
   rulesOpen: false,
   theme: applyTheme(initialTheme()),
@@ -143,6 +150,7 @@ export const useAppStore = create<State & Actions>()((set, get) => ({
   setForecastHour: (hour) =>
     set({ forecastHour: Math.min(Math.max(Math.round(hour), 0), FORECAST_HOURS) }),
   setPlaying: (playing) => set({ playing }),
+  setPlaybackSpeed: (playbackSpeed) => set({ playbackSpeed }),
   updateHeatmap: (patch) => set((s) => ({ heatmap: { ...s.heatmap, ...patch } })),
   setRulesOpen: (rulesOpen) => set({ rulesOpen }),
   setTheme: (theme) => {

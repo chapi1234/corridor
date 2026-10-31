@@ -46,4 +46,19 @@ describe('RouteTrack', () => {
     expect(lat).toBeCloseTo(0)
     expect(bearing).toBeCloseTo(90)
   })
+
+  it('turns the heading gradually through a corner', () => {
+    const corner = {
+      geometry: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+      ],
+      checkpoints: [cp(0, 0), cp(1, 3600)],
+    } as unknown as Route
+    const track = new RouteTrack(corner)
+    expect(track.pointAt(0.25)[2]).toBeCloseTo(90)
+    expect(track.pointAt(0.5)[2]).toBeCloseTo(45)
+    expect(track.pointAt(0.75)[2]).toBeCloseTo(0)
+  })
 })
