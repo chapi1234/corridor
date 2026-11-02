@@ -7,6 +7,7 @@ import { useAppStore, type TripDraft } from '@/state/store'
 import { toPlanRequest } from '@/state/tripRequest'
 import { Button, IconButton } from '@/ui/Button'
 import { Segmented } from '@/ui/Segmented'
+import { Switch } from '@/ui/Switch'
 
 import { DepartureField } from './DepartureField'
 import { LoadField } from './LoadField'
@@ -17,33 +18,6 @@ const INTERVALS: { value: IntervalMi; label: string }[] = [
   { value: 10, label: '10 mi' },
   { value: 25, label: '25 mi' },
   { value: 50, label: '50 mi' },
-]
-
-const EXAMPLES: { label: string; draft: Pick<TripDraft, 'origin' | 'destination' | 'loadLb'> }[] = [
-  {
-    label: 'Denver → Chicago',
-    draft: {
-      origin: { label: 'Denver, CO', lat: 39.7392, lon: -104.9903 },
-      destination: { label: 'Chicago, IL', lat: 41.8781, lon: -87.6298 },
-      loadLb: 42_000,
-    },
-  },
-  {
-    label: 'Dallas → Atlanta',
-    draft: {
-      origin: { label: 'Dallas, TX', lat: 32.7767, lon: -96.797 },
-      destination: { label: 'Atlanta, GA', lat: 33.749, lon: -84.388 },
-      loadLb: 38_000,
-    },
-  },
-  {
-    label: 'Seattle → Salt Lake City',
-    draft: {
-      origin: { label: 'Seattle, WA', lat: 47.6062, lon: -122.3321 },
-      destination: { label: 'Salt Lake City, UT', lat: 40.7608, lon: -111.891 },
-      loadLb: 33_000,
-    },
-  },
 ]
 
 const STEPS = [
@@ -150,6 +124,12 @@ export function TripForm({ onSubmit, pending, error }: TripFormProps) {
             onChange={(intervalMi) => updateDraft({ intervalMi })}
           />
         </div>
+        <Switch
+          label="Mandatory rest (HOS)"
+          description="30-min break after 8 h driving, 10-h rest after 11 h"
+          checked={draft.hos}
+          onChange={(hos) => updateDraft({ hos })}
+        />
       </fieldset>
 
       {error && !error.fieldError('departure') && !error.fieldError('destination') && (
@@ -165,24 +145,6 @@ export function TripForm({ onSubmit, pending, error }: TripFormProps) {
         <Button type="submit" variant="primary" size="lg" icon={<RouteIcon size={18} />}>
           Plan routes
         </Button>
-      )}
-
-      {!pending && (
-        <div className={styles.examples}>
-          <span className="label">Try an example</span>
-          <div className={styles.exampleList}>
-            {EXAMPLES.map((example) => (
-              <button
-                key={example.label}
-                type="button"
-                className={styles.example}
-                onClick={() => updateDraft(example.draft)}
-              >
-                {example.label}
-              </button>
-            ))}
-          </div>
-        </div>
       )}
     </form>
   )

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bisect import bisect_right
+from bisect import bisect_left, bisect_right
 from collections.abc import Iterable
 from dataclasses import dataclass
 
@@ -66,3 +66,13 @@ class TimeProfile:
         d0, d1 = self._distances[i], self._distances[i + 1]
         t0, t1 = self._elapsed[i], self._elapsed[i + 1]
         return t0 + (t1 - t0) * (d - d0) / (d1 - d0)
+
+    def distance_at(self, elapsed_s: float) -> float:
+        """Inverse of :meth:`elapsed_at`: the first distance reached after ``elapsed_s``."""
+        t = min(max(elapsed_s, 0.0), self._elapsed[-1])
+        i = bisect_left(self._elapsed, t)
+        if i == 0:
+            return self._distances[0]
+        t0, t1 = self._elapsed[i - 1], self._elapsed[i]
+        d0, d1 = self._distances[i - 1], self._distances[i]
+        return d0 + (d1 - d0) * (t - t0) / (t1 - t0)

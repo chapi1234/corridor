@@ -62,6 +62,24 @@ def test_plan_response_matches_published_schema(client: APIClient) -> None:
     assert checkpoint["risk"]["level"] == 0
 
 
+def test_hours_of_service_adds_rest_stops(client: APIClient) -> None:
+    plain = post_plan(client).json()["routes"][0]
+    response = post_plan(client, hos=True)
+
+    assert response.status_code == 200, response.content
+    body = response.json()
+    assert PlanResponseSerializer(data=body).is_valid()
+    assert body["inputs"]["hos"] is True
+    route = body["routes"][0]
+    assert plain["rest_stops"] == []
+    assert [r["kind"] for r in route["rest_stops"]] == ["break"]
+    assert route["rest_stops"][0]["start_s"] == 8 * 3600
+    assert route["driving_s"] == plain["driving_s"] == plain["duration_s"]
+    assert route["duration_s"] == plain["duration_s"] + 1800
+    last = route["checkpoints"][-1]
+    assert last["elapsed_s"] == last["driving_s"] + 1800
+
+
 def test_plan_is_cached_by_inputs(client: APIClient, monkeypatch: pytest.MonkeyPatch) -> None:
     calls = 0
 

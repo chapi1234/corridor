@@ -8,6 +8,7 @@ from enum import StrEnum
 from zoneinfo import ZoneInfo
 
 from corridor.domain.geometry import LatLon
+from corridor.domain.hos import RestKind
 from corridor.domain.models import Place, RouteCandidate
 from corridor.domain.ranking import Ranking, RouteRisk, Tag
 from corridor.domain.risk import Classification
@@ -25,6 +26,8 @@ class PlanRequest:
     """Naive wall-clock time at the origin (D14)."""
     load_lb: float
     interval_mi: int
+    hos: bool = False
+    """Insert FMCSA hours-of-service rest into the schedule (D25)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +44,8 @@ class HourlyWindow:
 class Checkpoint:
     position: CheckpointPosition
     eta: datetime
+    trip_s: float
+    """Wall-clock seconds after departure, including rest; ``position.elapsed_s`` is driving."""
     tz: ZoneInfo
     """Local time zone at the checkpoint, for displaying its ETA."""
     line_fraction: float
@@ -52,6 +57,19 @@ class Checkpoint:
 
 
 @dataclass(frozen=True, slots=True)
+class PlannedRest:
+    """A mandatory rest on a route, located where the driving limit is reached."""
+
+    kind: RestKind
+    start: datetime
+    tz: ZoneInfo
+    trip_s: float
+    duration_s: float
+    distance_m: float
+    point: LatLon
+
+
+@dataclass(frozen=True, slots=True)
 class PlannedRoute:
     id: str
     candidate: RouteCandidate
@@ -59,6 +77,9 @@ class PlannedRoute:
     risk: RouteRisk
     arrival: datetime
     tags: tuple[Tag, ...]
+    trip_s: float
+    """Door-to-door time including rest; equals the driving time without HOS."""
+    rests: tuple[PlannedRest, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

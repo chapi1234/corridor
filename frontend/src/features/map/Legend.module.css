@@ -30,6 +30,17 @@
   align-items: center;
 }
 
+.rest {
+  grid-column: 1 / -1;
+}
+
+.restIcon {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--rest);
+}
+
 .heat {
   display: grid;
   gap: 6px;

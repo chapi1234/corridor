@@ -37,6 +37,10 @@ It recommends the safest route and explains why in one sentence.
   hover, showing where each truck is at the selected forecast hour.
 - **Checkpoint drawer.** Factor gauges on the rule scales, the load rule when it applied,
   and ±6 h of hourly forecast — is this a passing spike or a long window?
+- **Mandatory rest (hours of service).** Optionally plans FMCSA rest into the schedule — a
+  30-minute break after 8 h of driving and a 10-hour rest after 11 h — so later checkpoints
+  are scored at the hour the truck really gets there. Rest stops appear on the map and the
+  ribbon, and the truck parks while it rests.
 - **Unknown is never safe.** Miles without a forecast are shown hatched and counted as
   unknown, not as Low.
 
@@ -155,7 +159,7 @@ cd frontend && pnpm test && pnpm lint && pnpm typecheck && pnpm build
 
 ## Key decisions
 
-The full log, D1–D24, is in [PLAN.md §3](PLAN.md#3-spec-interpretation--decisions-log),
+The full log, D1–D25, is in [PLAN.md §3](PLAN.md#3-spec-interpretation--decisions-log),
 with implementation changes in [§25](PLAN.md#25-implementation-notes--plan-updates).
 The ones that most affect results:
 

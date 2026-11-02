@@ -2,6 +2,8 @@ import * as Slider from '@radix-ui/react-slider'
 import { Pause, Play, SkipBack } from 'lucide-react'
 import { useEffect } from 'react'
 
+import type { Route } from '@/api/types'
+import { REST_LABEL, restAt } from '@/domain/duty'
 import { formatInstant, formatMiles } from '@/domain/format'
 import { elapsedAtHour, frameInstant, hourOf, mileAtElapsed } from '@/domain/timeline'
 import { clamp } from '@/lib/math'
@@ -36,6 +38,14 @@ function usePlayback() {
   }, [playing, speed])
 }
 
+function truckStatus(route: Route, elapsedS: number): string {
+  const where = formatMiles(mileAtElapsed(route, elapsedS))
+  const rest = restAt(route, elapsedS)
+  return rest
+    ? `Route ${route.id} truck on ${REST_LABEL[rest.kind]} at ${where}`
+    : `Route ${route.id} truck near ${where}`
+}
+
 /** 0–48 h forecast scrubber driving the heatmap frame and the ghost truck. */
 export function TimelineDock() {
   const scored = useScoredPlan()
@@ -63,7 +73,7 @@ export function TimelineDock() {
       ? 'Before departure'
       : elapsedS >= selected.route.duration_s
         ? `Arrived · Route ${selected.route.id}`
-        : `Route ${selected.route.id} truck near ${formatMiles(mileAtElapsed(selected.route, elapsedS))}`
+        : truckStatus(selected.route, elapsedS)
 
   const togglePlay = () => {
     if (!playing && hour >= FORECAST_HOURS) setForecastHour(0)

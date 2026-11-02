@@ -13,6 +13,7 @@ from typing import Any
 from rest_framework import serializers
 
 from corridor.domain.geometry import LatLon
+from corridor.domain.hos import RestKind
 from corridor.domain.models import Place
 from corridor.domain.ranking import Criterion, Tag
 from corridor.domain.risk import Factor, LoadRule
@@ -36,6 +37,11 @@ class PlanRequestSerializer(serializers.Serializer[PlanRequest]):
     )
     load_lb = serializers.FloatField(min_value=0, max_value=MAX_LOAD_LB)
     interval_mi = serializers.ChoiceField(choices=SAMPLING_INTERVALS_MI)
+    hos = serializers.BooleanField(
+        default=False,
+        help_text="Insert FMCSA hours-of-service rest: a 30-min break after 8 h of driving "
+        "and a 10-h reset after 11 h.",
+    )
 
     def validate_departure_local(self, value: str) -> datetime:
         try:
@@ -56,6 +62,7 @@ class PlanRequestSerializer(serializers.Serializer[PlanRequest]):
             departure_local=data["departure_local"],
             load_lb=data["load_lb"],
             interval_mi=int(data["interval_mi"]),
+            hos=data["hos"],
         )
 
 
@@ -138,7 +145,8 @@ class CheckpointSerializer(serializers.Serializer[None]):
     lat = serializers.FloatField()
     lon = serializers.FloatField()
     eta = LocalTimeSerializer()
-    elapsed_s = serializers.IntegerField()
+    elapsed_s = serializers.IntegerField(help_text="Seconds after departure, including rest.")
+    driving_s = serializers.IntegerField(help_text="Driving time to reach the checkpoint.")
     line_fraction = serializers.FloatField(min_value=0, max_value=1)
     weather = WeatherSerializer(allow_null=True)
     risk = RiskSerializer(allow_null=True)
@@ -157,11 +165,22 @@ class RouteSummarySerializer(serializers.Serializer[None]):
     worst_checkpoint = serializers.IntegerField(allow_null=True)
 
 
+class RestStopSerializer(serializers.Serializer[None]):
+    kind = serializers.ChoiceField(choices=_choices(RestKind))
+    start = LocalTimeSerializer()
+    start_s = serializers.IntegerField(help_text="Seconds after departure when the rest begins.")
+    duration_s = serializers.IntegerField()
+    mile = serializers.FloatField()
+    lat = serializers.FloatField()
+    lon = serializers.FloatField()
+
+
 class RouteSerializer(serializers.Serializer[None]):
     id = serializers.CharField()
     source = serializers.ChoiceField(choices=["primary", "alternative", "via"])
     distance_mi = serializers.FloatField()
-    duration_s = serializers.IntegerField()
+    duration_s = serializers.IntegerField(help_text="Door-to-door time, including any rest.")
+    driving_s = serializers.IntegerField()
     arrival = LocalTimeSerializer()
     highways = serializers.ListField(child=serializers.CharField())
     geometry = serializers.ListField(
@@ -170,6 +189,7 @@ class RouteSerializer(serializers.Serializer[None]):
     )
     tags = serializers.ListField(child=serializers.ChoiceField(choices=_choices(Tag)))
     summary = RouteSummarySerializer()
+    rest_stops = RestStopSerializer(many=True)
     checkpoints = CheckpointSerializer(many=True)
 
 
@@ -216,6 +236,7 @@ class InputsSerializer(serializers.Serializer[None]):
     destination = PlaceSerializer()
     load_lb = serializers.FloatField()
     interval_mi = serializers.IntegerField()
+    hos = serializers.BooleanField()
     wind_metric = serializers.CharField()
 
 

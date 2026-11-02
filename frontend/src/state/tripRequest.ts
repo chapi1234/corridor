@@ -11,5 +11,6 @@ export function toPlanRequest(draft: TripDraft): PlanRequest | null {
     departure_local: draft.departureLocal,
     load_lb: draft.loadLb,
     interval_mi: draft.intervalMi,
+    hos: draft.hos,
   }
 }

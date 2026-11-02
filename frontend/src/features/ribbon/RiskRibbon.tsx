@@ -156,6 +156,7 @@ function draw(canvas: HTMLCanvasElement, input: DrawInput): void {
     grid: cssColor('--line-1'),
     axis: cssColor('--text-3'),
     accent: cssColor('--accent'),
+    rest: cssColor('--rest'),
     ink: cssColor('--text-1'),
     bg: cssColor('--bg-0'),
   }
@@ -202,6 +203,14 @@ function draw(canvas: HTMLCanvasElement, input: DrawInput): void {
       ctx.strokeStyle = colors.accent
       ctx.lineWidth = 1
       ctx.strokeRect(0.5, top + 0.5, x(route.route.distance_mi) - 1, ROW_H - 1)
+    }
+
+    // Mandatory rest stops: a services-blue pin at the mile where the driver stops.
+    for (const rest of route.route.rest_stops) {
+      const px = Math.round(x(rest.mile))
+      ctx.fillStyle = colors.rest
+      ctx.fillRect(px - 1, barTop, 2, barH)
+      ctx.fillRect(px - 3, top - 3, 6, rest.kind === 'reset' ? 6 : 4)
     }
 
     // Truck position at the current forecast hour.

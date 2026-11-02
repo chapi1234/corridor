@@ -6,6 +6,8 @@
 import type { PlanResponse, Route } from '@/api/types'
 import { lerp } from '@/lib/math'
 
+import { drivingAt } from './duty'
+
 const HOUR_MS = 3_600_000
 
 export function frameInstant(plan: PlanResponse, hour: number): Date {
@@ -28,16 +30,20 @@ export function hourOfCheckpoint(plan: PlanResponse, route: Route, index: number
   return checkpoint ? Math.round(hourOf(plan, checkpoint.eta.utc)) : 0
 }
 
-/** Where the truck is (route mile) after ``elapsedS`` seconds, from the checkpoint schedule. */
+/**
+ * Where the truck is (route mile) ``elapsedS`` seconds after departure, from the checkpoint
+ * schedule. Rest time is removed first, so the truck stays put while resting.
+ */
 export function mileAtElapsed(route: Route, elapsedS: number): number {
   const checkpoints = route.checkpoints
   if (checkpoints.length === 0 || elapsedS <= 0) return 0
   if (elapsedS >= route.duration_s) return route.distance_mi
+  const drivingS = drivingAt(route, elapsedS)
   for (let i = 1; i < checkpoints.length; i++) {
     const [a, b] = [checkpoints[i - 1]!, checkpoints[i]!]
-    if (elapsedS <= b.elapsed_s) {
-      const span = b.elapsed_s - a.elapsed_s
-      return lerp(a.mile, b.mile, span > 0 ? (elapsedS - a.elapsed_s) / span : 0)
+    if (drivingS <= b.driving_s) {
+      const span = b.driving_s - a.driving_s
+      return lerp(a.mile, b.mile, span > 0 ? (drivingS - a.driving_s) / span : 0)
     }
   }
   return route.distance_mi

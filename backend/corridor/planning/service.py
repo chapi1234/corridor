@@ -8,11 +8,12 @@ import math
 import time
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from corridor.domain.geometry import LatLon, Polyline
+from corridor.domain.hos import DutySchedule
 from corridor.domain.models import RouteCandidate
 from corridor.domain.ranking import RiskSegment, assign_tags, rank, summarize
 from corridor.domain.risk import classify
@@ -34,6 +35,7 @@ from corridor.planning.models import (
     Checkpoint,
     HourlyWindow,
     Plan,
+    PlannedRest,
     PlannedRoute,
     PlanRequest,
     PlanWarning,
@@ -43,6 +45,21 @@ from corridor.planning.ports import RoutingProvider, WeatherProvider
 from corridor.planning.projection import LocalProjection
 
 ROUTE_LABELS = "ABCDEFGH"
+
+
+@dataclass(frozen=True, slots=True)
+class _RouteTiming:
+    """Where a route's checkpoints are, and when the truck reaches them."""
+
+    polyline: Polyline
+    profile: TimeProfile
+    positions: list[CheckpointPosition]
+    schedule: DutySchedule
+
+    @property
+    def trip_s(self) -> float:
+        return self.schedule.clock_s(self.profile.total_s)
+
 
 logger = logging.getLogger(__name__)
 
@@ -88,14 +105,15 @@ class PlanningService:
         candidates.sort(key=lambda c: c.duration_s)
 
         with _timed(timings, "geometry"):
-            positions = [self._checkpoints(c, request.interval_mi) for c in candidates]
+            timings_by_route = [self._timing(c, request) for c in candidates]
+            positions = [t.positions for t in timings_by_route]
             projection = LocalProjection([p for c in candidates for p in c.points])
             grid = corridor_grid(
                 [projection.line(c.points) for c in candidates], projection, self._config
             )
 
         base_time = floor_hour(departure)
-        last_eta = departure + timedelta(seconds=max(c.duration_s for c in candidates))
+        last_eta = departure + timedelta(seconds=max(t.trip_s for t in timings_by_route))
         window = timedelta(hours=self._config.checkpoint_window_hours)
         start = base_time - window
         end = min(
@@ -116,7 +134,7 @@ class PlanningService:
 
         with _timed(timings, "scoring"):
             routes = self._score_routes(
-                candidates, positions, forecasts, departure, request.load_lb
+                candidates, timings_by_route, forecasts, departure, request.load_lb
             )
             ranking = rank([r.risk for r in routes])
             tags = assign_tags([r.risk for r in routes], ranking)
@@ -198,7 +216,7 @@ class PlanningService:
                 distinct.offer_all(result)
         return distinct.routes[:target]
 
-    def _checkpoints(self, candidate: RouteCandidate, interval_mi: int) -> list[CheckpointPosition]:
+    def _timing(self, candidate: RouteCandidate, request: PlanRequest) -> _RouteTiming:
         polyline = Polyline(candidate.points)
         # Provider anchors are in the provider's length units; rescale onto our polyline.
         scale = polyline.total_m / candidate.length_m if candidate.length_m else 1.0
@@ -207,25 +225,47 @@ class PlanningService:
             total_m=polyline.total_m,
             total_s=candidate.duration_s,
         )
-        return place_checkpoints(polyline, profile, miles_to_meters(interval_mi))
+        return _RouteTiming(
+            polyline=polyline,
+            profile=profile,
+            positions=place_checkpoints(polyline, profile, miles_to_meters(request.interval_mi)),
+            schedule=DutySchedule.plan(profile.total_s) if request.hos else DutySchedule(),
+        )
+
+    def _rests(self, timing: _RouteTiming, departure: datetime) -> tuple[PlannedRest, ...]:
+        rests = []
+        for rest in timing.schedule.rests:
+            distance_m = timing.profile.distance_at(rest.driving_s)
+            point = timing.polyline.point_at(distance_m)
+            rests.append(
+                PlannedRest(
+                    kind=rest.kind,
+                    start=departure + timedelta(seconds=rest.start_s),
+                    tz=self._timezone_at(point),
+                    trip_s=rest.start_s,
+                    duration_s=rest.duration_s,
+                    distance_m=distance_m,
+                    point=point,
+                )
+            )
+        return tuple(rests)
 
     def _score_routes(
         self,
         candidates: Sequence[RouteCandidate],
-        positions: Sequence[Sequence[CheckpointPosition]],
+        timings: Sequence[_RouteTiming],
         forecasts: dict[LatLon, HourlySeries],
         departure: datetime,
         load_lb: float,
     ) -> list[PlannedRoute]:
         step = self._config.weather_grid_deg
         routes = []
-        for label, candidate, route_positions in zip(
-            ROUTE_LABELS, candidates, positions, strict=False
-        ):
-            total_m = route_positions[-1].distance_m
+        for label, candidate, timing in zip(ROUTE_LABELS, candidates, timings, strict=False):
+            total_m = timing.positions[-1].distance_m
             checkpoints = []
-            for position in route_positions:
-                eta = departure + timedelta(seconds=position.elapsed_s)
+            for position in timing.positions:
+                trip_s = timing.schedule.clock_s(position.elapsed_s)
+                eta = departure + timedelta(seconds=trip_s)
                 weather_point = snap(position.point, step)
                 series = forecasts.get(weather_point)
                 sample = series.at(eta) if series else None
@@ -233,6 +273,7 @@ class PlanningService:
                     Checkpoint(
                         position=position,
                         eta=eta,
+                        trip_s=trip_s,
                         tz=self._timezone_at(position.point),
                         line_fraction=position.distance_m / total_m,
                         weather_point=weather_point,
@@ -250,7 +291,7 @@ class PlanningService:
                     for c in checkpoints
                 ),
                 distance_m=candidate.length_m,
-                duration_s=candidate.duration_s,
+                duration_s=timing.trip_s,
             )
             routes.append(
                 PlannedRoute(
@@ -258,8 +299,10 @@ class PlanningService:
                     candidate=candidate,
                     checkpoints=tuple(checkpoints),
                     risk=risk,
-                    arrival=departure + timedelta(seconds=candidate.duration_s),
+                    arrival=departure + timedelta(seconds=timing.trip_s),
                     tags=(),
+                    trip_s=timing.trip_s,
+                    rests=self._rests(timing, departure),
                 )
             )
         return routes

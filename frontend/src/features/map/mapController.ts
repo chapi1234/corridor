@@ -26,7 +26,7 @@ import type { ScoredPlan } from '@/domain/scoring'
 import type { CheckpointRef, HoverTarget, Theme } from '@/state/store'
 
 import { BASEMAP_STYLES, firstSymbolLayerId, tintBasemap } from './basemap'
-import { endpointIcon, shieldIcon, truckIcon } from './mapImages'
+import { endpointIcon, restIcon, shieldIcon, truckIcon } from './mapImages'
 
 const SRC = {
   heat: 'c-heat',
@@ -35,6 +35,7 @@ const SRC = {
   checkpoints: 'c-checkpoints',
   ghost: 'c-ghost',
   endpoints: 'c-endpoints',
+  rests: 'c-rests',
 } as const
 
 const LYR = {
@@ -46,6 +47,7 @@ const LYR = {
   checkpoints: 'c-checkpoints',
   shields: 'c-route-shields',
   endpoints: 'c-endpoints',
+  rests: 'c-rests',
   ghost: 'c-ghost',
 } as const
 
@@ -361,6 +363,16 @@ export class MapController {
       layout: { 'icon-image': ['get', 'icon'], 'icon-allow-overlap': true },
     })
     this.map.addLayer({
+      id: LYR.rests,
+      type: 'symbol',
+      source: SRC.rests,
+      layout: {
+        'icon-image': ['concat', 'rest-', ['get', 'kind']],
+        'icon-allow-overlap': true,
+        'icon-offset': [0, -14],
+      },
+    })
+    this.map.addLayer({
       id: LYR.ghost,
       type: 'symbol',
       source: SRC.ghost,
@@ -397,6 +409,12 @@ export class MapController {
       }),
     )
     add('origin', endpointIcon('origin', { fill: ink, ink: cssColor('--bg-0') }))
+    for (const kind of ['break', 'reset'] as const) {
+      add(
+        `rest-${kind}`,
+        restIcon(kind, { fill: cssColor('--rest'), ink: '#ffffff', stroke: cssColor('--bg-0') }),
+      )
+    }
     add('destination', endpointIcon('destination', { fill: ink, ink: cssColor('--bg-0') }))
     for (const letter of 'ABCDEFGH') {
       add(
@@ -422,7 +440,14 @@ export class MapController {
   private renderPlan(): void {
     const view = this.plan
     if (!view) {
-      for (const id of [SRC.routes, SRC.selected, SRC.checkpoints, SRC.ghost, SRC.endpoints]) {
+      for (const id of [
+        SRC.routes,
+        SRC.selected,
+        SRC.checkpoints,
+        SRC.ghost,
+        SRC.endpoints,
+        SRC.rests,
+      ]) {
         this.source(id).setData(emptyCollection())
       }
       return
@@ -478,6 +503,15 @@ export class MapController {
           geometry: { type: 'Point' as const, coordinates: [checkpoint.lon, checkpoint.lat] },
         })),
       ),
+    })
+
+    this.source(SRC.rests).setData({
+      type: 'FeatureCollection',
+      features: (selected?.route.rest_stops ?? []).map((rest) => ({
+        type: 'Feature' as const,
+        properties: { kind: rest.kind },
+        geometry: { type: 'Point' as const, coordinates: [rest.lon, rest.lat] },
+      })),
     })
 
     const { origin, destination } = scored.plan.inputs
@@ -597,7 +631,10 @@ export class MapController {
     const [lon, lat, bearing] = track.pointAt(track.fractionAtElapsed(elapsedS))
     this.source(SRC.ghost).setData({
       type: 'Feature',
-      properties: { bearing, moving: elapsedS > 0 && elapsedS < track.durationS },
+      properties: {
+        bearing,
+        moving: elapsedS > 0 && elapsedS < track.durationS && !track.isRestingAt(elapsedS),
+      },
       geometry: { type: 'Point', coordinates: [lon, lat] },
     })
   }

@@ -131,6 +131,10 @@ export function RulesPanel() {
                 Checkpoints every 10, 25 or 50 miles; each owns the road halfway to its neighbours.
               </li>
               <li>ETAs follow the router's own speed profile, not a constant average.</li>
+              <li>
+                With mandatory rest on, ETAs include FMCSA hours of service: a 30-minute break after
+                8 h of driving and a 10-hour rest after 11 h, assuming the driver starts rested.
+              </li>
               <li>Wind uses gusts, which is what tips a high-sided trailer.</li>
               <li>Precipitation is the rate for the hour that contains the ETA.</li>
               <li>Miles without a forecast are shown as unknown, never as safe.</li>

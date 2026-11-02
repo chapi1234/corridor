@@ -4,8 +4,8 @@ import type { Checkpoint, Route } from '@/api/types'
 
 import { RouteTrack, riskGradientStops } from './routeGeometry'
 
-const cp = (line_fraction: number, elapsed_s: number) =>
-  ({ line_fraction, elapsed_s }) as Checkpoint
+const cp = (line_fraction: number, driving_s: number) =>
+  ({ line_fraction, driving_s, elapsed_s: driving_s }) as Checkpoint
 
 describe('riskGradientStops', () => {
   it('creates hard edges only where the colour changes', () => {
@@ -31,6 +31,8 @@ describe('RouteTrack', () => {
       [2, 0],
     ],
     checkpoints: [cp(0, 0), cp(0.5, 600), cp(1, 3600)],
+    duration_s: 3600,
+    rest_stops: [],
   } as unknown as Route
 
   it('maps elapsed time to progress through checkpoints', () => {
@@ -38,6 +40,20 @@ describe('RouteTrack', () => {
     expect(track.fractionAtElapsed(300)).toBeCloseTo(0.25)
     expect(track.fractionAtElapsed(2100)).toBeCloseTo(0.75)
     expect(track.fractionAtElapsed(99_999)).toBe(1)
+  })
+
+  it('holds position during a mandatory rest', () => {
+    const rested = {
+      ...route,
+      duration_s: 3600 + 1800,
+      rest_stops: [{ kind: 'break', start_s: 600, duration_s: 1800 }],
+    } as unknown as Route
+    const track = new RouteTrack(rested)
+    expect(track.fractionAtElapsed(600)).toBeCloseTo(0.5)
+    expect(track.fractionAtElapsed(1500)).toBeCloseTo(0.5)
+    expect(track.isRestingAt(1500)).toBe(true)
+    expect(track.fractionAtElapsed(2400 + 1500)).toBeCloseTo(0.75)
+    expect(track.isRestingAt(2400 + 1500)).toBe(false)
   })
 
   it('interpolates position and bearing along the line', () => {
@@ -55,6 +71,8 @@ describe('RouteTrack', () => {
         [1, 1],
       ],
       checkpoints: [cp(0, 0), cp(1, 3600)],
+      duration_s: 3600,
+      rest_stops: [],
     } as unknown as Route
     const track = new RouteTrack(corner)
     expect(track.pointAt(0.25)[2]).toBeCloseTo(90)

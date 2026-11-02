@@ -88,3 +88,41 @@ export function endpointIcon(
     }
   })
 }
+
+/**
+ * Mandatory rest marker in the style of a blue services sign: a cup for the 30-minute
+ * break, a crescent moon for the 10-hour reset.
+ */
+export function restIcon(
+  kind: 'break' | 'reset',
+  colors: { fill: string; ink: string; stroke: string },
+): IconImage {
+  return draw(22, 22, (ctx) => {
+    ctx.beginPath()
+    ctx.roundRect(1.5, 1.5, 19, 19, 3)
+    ctx.fillStyle = colors.fill
+    ctx.fill()
+    ctx.lineWidth = 1.5
+    ctx.strokeStyle = colors.stroke
+    ctx.stroke()
+    ctx.fillStyle = colors.ink
+    ctx.strokeStyle = colors.ink
+    if (kind === 'reset') {
+      ctx.beginPath()
+      ctx.arc(11, 11, 6, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalCompositeOperation = 'destination-out'
+      ctx.beginPath()
+      ctx.arc(14, 8.5, 5.2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalCompositeOperation = 'source-over'
+    } else {
+      ctx.fillRect(6, 8, 8, 7)
+      ctx.lineWidth = 1.6
+      ctx.beginPath()
+      ctx.arc(14.5, 11.5, 2.2, -Math.PI / 2, Math.PI / 2)
+      ctx.stroke()
+      ctx.fillRect(5, 16, 10, 1.6)
+    }
+  })
+}

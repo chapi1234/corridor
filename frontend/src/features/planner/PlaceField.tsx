@@ -30,7 +30,7 @@ export function PlaceField({
   const [active, setActive] = useState(0)
   const [syncedLabel, setSyncedLabel] = useState(value?.label)
 
-  // Keep the input in sync when the value changes from outside (swap, URL, examples).
+  // Keep the input in sync when the value changes from outside (swap, URL).
   if (value?.label !== syncedLabel) {
     setSyncedLabel(value?.label)
     setText(value?.label ?? '')

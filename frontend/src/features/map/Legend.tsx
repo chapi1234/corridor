@@ -1,6 +1,7 @@
 import { VARIABLE_SCALES, type VariableScale } from '@/domain/heatmap'
 import { LEVEL_META } from '@/domain/levels'
 import { LEVELS } from '@/domain/risk'
+import { useScoredPlan } from '@/state/selectors'
 import { useAppStore } from '@/state/store'
 import { RiskSwatch } from '@/ui/RiskChip'
 
@@ -22,6 +23,7 @@ function rampGradient(scale: VariableScale): string {
 export function Legend() {
   const heatmap = useAppStore((s) => s.heatmap)
   const scale = VARIABLE_SCALES[heatmap.variable]
+  const hasRests = useScoredPlan()?.plan.routes.some((r) => r.rest_stops.length > 0) ?? false
 
   return (
     <aside className={styles.legend} aria-label="Map legend">
@@ -37,6 +39,12 @@ export function Legend() {
           <RiskSwatch level={null} />
           No forecast
         </li>
+        {hasRests && (
+          <li className={styles.rest}>
+            <span className={styles.restIcon} aria-hidden />
+            Mandatory rest
+          </li>
+        )}
       </ul>
       {heatmap.visible && (
         <div className={styles.heat}>

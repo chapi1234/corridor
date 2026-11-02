@@ -28,7 +28,7 @@ export function ResultsPanel() {
           </span>
           <span className={`${styles.meta} num`}>
             {formatLocal(plan.departure)} · {formatPounds(plan.inputs.load_lb)} · every{' '}
-            {plan.inputs.interval_mi} mi
+            {plan.inputs.interval_mi} mi{plan.inputs.hos && ' · HOS rest'}
           </span>
         </div>
         <Button variant="ghost" size="sm" icon={<Pencil size={14} />} onClick={editTrip}>

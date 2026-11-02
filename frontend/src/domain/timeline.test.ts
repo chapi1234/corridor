@@ -7,10 +7,11 @@ import { elapsedAtHour, hourOf, hourOfCheckpoint, mileAtElapsed } from './timeli
 const route = {
   distance_mi: 100,
   duration_s: 7200,
+  rest_stops: [],
   checkpoints: [
-    { mile: 0, elapsed_s: 0, eta: { utc: '2026-11-01T14:30:00Z' } },
-    { mile: 50, elapsed_s: 2400, eta: { utc: '2026-11-01T15:10:00Z' } },
-    { mile: 100, elapsed_s: 7200, eta: { utc: '2026-11-01T16:30:00Z' } },
+    { mile: 0, elapsed_s: 0, driving_s: 0, eta: { utc: '2026-11-01T14:30:00Z' } },
+    { mile: 50, elapsed_s: 2400, driving_s: 2400, eta: { utc: '2026-11-01T15:10:00Z' } },
+    { mile: 100, elapsed_s: 7200, driving_s: 7200, eta: { utc: '2026-11-01T16:30:00Z' } },
   ],
 } as unknown as Route
 
@@ -30,6 +31,20 @@ describe('mileAtElapsed', () => {
     [9000, 100],
   ])('after %d s the truck is at mile %d', (elapsed, mile) => {
     expect(mileAtElapsed(route, elapsed)).toBeCloseTo(mile)
+  })
+})
+
+describe('mileAtElapsed with rest', () => {
+  const rested = {
+    ...route,
+    duration_s: 7200 + 1800,
+    rest_stops: [{ kind: 'break', start_s: 2400, duration_s: 1800 }],
+  } as unknown as Route
+
+  it('parks the truck while it rests', () => {
+    expect(mileAtElapsed(rested, 2400)).toBeCloseTo(50)
+    expect(mileAtElapsed(rested, 3600)).toBeCloseTo(50)
+    expect(mileAtElapsed(rested, 4200 + 2400)).toBeCloseTo(75)
   })
 })
 

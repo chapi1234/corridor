@@ -27,6 +27,8 @@
   --sign-green-ink: #f1fbf6;
   --route-muted: #6d8e98;
   --route-casing: #031015;
+  /* US services-sign blue, for mandatory rest stops */
+  --rest: #2a6fdb;
 
   /* Risk scale */
   --risk-0: #36d399;
@@ -102,6 +104,7 @@
 
   --route-muted: #7f9aa2;
   --route-casing: #ffffff;
+  --rest: #1f5fc4;
 
   --risk-0: #17955f;
   --risk-1: #b8930b;

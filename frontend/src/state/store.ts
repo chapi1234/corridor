@@ -11,6 +11,8 @@ export interface TripDraft {
   departureLocal: string
   loadLb: number
   intervalMi: IntervalMi
+  /** Plan FMCSA hours-of-service rest into the ETAs (D25). */
+  hos: boolean
 }
 
 export interface CheckpointRef {
@@ -91,6 +93,7 @@ export const useAppStore = create<State & Actions>()((set, get) => ({
     departureLocal: nextFullHour(),
     loadLb: 42_000,
     intervalMi: 25,
+    hos: false,
   },
   plan: null,
   editing: true,

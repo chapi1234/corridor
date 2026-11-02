@@ -73,7 +73,10 @@ export interface components {
             /** Format: double */
             lon: number;
             eta: components["schemas"]["LocalTime"];
+            /** @description Seconds after departure, including rest. */
             elapsed_s: number;
+            /** @description Driving time to reach the checkpoint. */
+            driving_s: number;
             /** Format: double */
             line_fraction: number;
             weather: components["schemas"]["Weather"] | null;
@@ -136,6 +139,7 @@ export interface components {
             /** Format: double */
             load_lb: number;
             interval_mi: number;
+            hos: boolean;
             wind_metric: string;
         };
         /**
@@ -145,6 +149,12 @@ export interface components {
          * @enum {integer}
          */
         IntervalMiEnum: 10 | 25 | 50;
+        /**
+         * @description * `break` - break
+         *     * `reset` - reset
+         * @enum {string}
+         */
+        KindEnum: "break" | "reset";
         /**
          * @description * `wind_45_54_over_30k_lb` - wind_45_54_over_30k_lb
          *     * `wind_35_44_over_40k_lb` - wind_35_44_over_40k_lb
@@ -199,6 +209,11 @@ export interface components {
             /** Format: double */
             load_lb: number;
             interval_mi: components["schemas"]["IntervalMiEnum"];
+            /**
+             * @description Insert FMCSA hours-of-service rest: a 30-min break after 8 h of driving and a 10-h reset after 11 h.
+             * @default false
+             */
+            hos: boolean;
         };
         PlanResponse: {
             plan_id: string;
@@ -226,6 +241,19 @@ export interface components {
             reason: string;
             no_safe_route: boolean;
         };
+        RestStop: {
+            kind: components["schemas"]["KindEnum"];
+            start: components["schemas"]["LocalTime"];
+            /** @description Seconds after departure when the rest begins. */
+            start_s: number;
+            duration_s: number;
+            /** Format: double */
+            mile: number;
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lon: number;
+        };
         ReverseResponse: {
             label: string | null;
         };
@@ -242,13 +270,16 @@ export interface components {
             source: components["schemas"]["SourceEnum"];
             /** Format: double */
             distance_mi: number;
+            /** @description Door-to-door time, including any rest. */
             duration_s: number;
+            driving_s: number;
             arrival: components["schemas"]["LocalTime"];
             highways: string[];
             /** @description Simplified [lon, lat] pairs. */
             geometry: number[][];
             tags: components["schemas"]["TagsEnum"][];
             summary: components["schemas"]["RouteSummary"];
+            rest_stops: components["schemas"]["RestStop"][];
             checkpoints: components["schemas"]["Checkpoint"][];
         };
         RouteSummary: {

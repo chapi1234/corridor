@@ -3,6 +3,8 @@
 import type { Checkpoint, Route } from '@/api/types'
 import { lerp } from '@/lib/math'
 
+import { drivingAt, restAt } from './duty'
+
 const EARTH_RADIUS_M = 6_371_008.8
 const toRad = (deg: number) => (deg * Math.PI) / 180
 
@@ -26,15 +28,20 @@ function bisectRight(values: ArrayLike<number>, target: number): number {
   return lo
 }
 
-/** A route line indexed by progress (0..1) and by elapsed driving time. */
+/**
+ * A route line indexed by progress (0..1) and by trip time since departure. Trip time is
+ * converted to driving time first, so the truck holds its position during mandatory rest.
+ */
 export class RouteTrack {
+  private readonly route: Route
   private readonly coords: number[][]
   private readonly fractions: Float64Array
-  private readonly cpElapsed: number[]
+  private readonly cpDriving: number[]
   private readonly cpFractions: number[]
   private readonly lengthM: number
 
   constructor(route: Route) {
+    this.route = route
     this.coords = route.geometry
     const cumulative = new Float64Array(this.coords.length)
     for (let i = 1; i < this.coords.length; i++) {
@@ -43,12 +50,18 @@ export class RouteTrack {
     const total = cumulative[cumulative.length - 1] || 1
     this.lengthM = total
     this.fractions = cumulative.map((d) => d / total)
-    this.cpElapsed = route.checkpoints.map((c) => c.elapsed_s)
+    this.cpDriving = route.checkpoints.map((c) => c.driving_s)
     this.cpFractions = route.checkpoints.map((c) => c.line_fraction)
   }
 
+  /** Door-to-door trip time, including rest. */
   get durationS(): number {
-    return this.cpElapsed.at(-1) ?? 0
+    return this.route.duration_s
+  }
+
+  /** Whether the truck is parked on a mandatory rest ``tripS`` seconds after departure. */
+  isRestingAt(tripS: number): boolean {
+    return restAt(this.route, tripS) !== null
   }
 
   /** [lon, lat] at progress ``fraction`` along the line. */
@@ -76,14 +89,15 @@ export class RouteTrack {
     return [lon, lat, bearing]
   }
 
-  /** Progress at ``elapsedS`` seconds after departure, interpolated between checkpoints. */
-  fractionAtElapsed(elapsedS: number): number {
-    const times = this.cpElapsed
-    if (elapsedS <= 0) return 0
-    if (elapsedS >= this.durationS) return 1
-    const i = bisectRight(times, elapsedS) - 1
+  /** Progress ``tripS`` seconds after departure, interpolated between checkpoints. */
+  fractionAtElapsed(tripS: number): number {
+    const times = this.cpDriving
+    const drivingS = drivingAt(this.route, tripS)
+    if (drivingS <= 0) return 0
+    if (drivingS >= times.at(-1)!) return 1
+    const i = bisectRight(times, drivingS) - 1
     const span = times[i + 1]! - times[i]!
-    const t = span > 0 ? (elapsedS - times[i]!) / span : 0
+    const t = span > 0 ? (drivingS - times[i]!) / span : 0
     return lerp(this.cpFractions[i]!, this.cpFractions[i + 1]!, t)
   }
 }

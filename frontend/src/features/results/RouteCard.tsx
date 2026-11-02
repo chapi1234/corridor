@@ -1,5 +1,6 @@
 import { memo } from 'react'
 
+import type { RestStop } from '@/api/types'
 import { formatDuration, formatLocal, formatMiles } from '@/domain/format'
 import { FACTOR_LABEL, TAG_LABEL } from '@/domain/levels'
 import { HIGH, NO_TRAVEL, SEVERE } from '@/domain/risk'
@@ -73,6 +74,12 @@ export const RouteCard = memo(function RouteCard({ scored, selected }: RouteCard
       <div className={styles.footer}>
         <span className={styles.arrival}>
           Arrive <span className="num">{formatLocal(route.arrival)}</span>
+          {route.rest_stops.length > 0 && (
+            <span className={styles.rests}>
+              {' '}
+              · {formatDuration(route.driving_s)} driving + {restSummary(route.rest_stops)}
+            </span>
+          )}
         </span>
         {worst?.risk && worst.risk.level > 0 && (
           <span className={styles.worst}>
@@ -103,4 +110,13 @@ function Metric({
       </dd>
     </div>
   )
+}
+
+/** "1 × 10-h rest, 2 × break" */
+function restSummary(rests: readonly RestStop[]): string {
+  const resets = rests.filter((r) => r.kind === 'reset').length
+  const breaks = rests.length - resets
+  return [resets && `${resets} × 10-h rest`, breaks && `${breaks} × break`]
+    .filter(Boolean)
+    .join(', ')
 }

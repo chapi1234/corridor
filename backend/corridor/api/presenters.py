@@ -16,7 +16,14 @@ from corridor.domain.risk import Classification, Level
 from corridor.domain.units import meters_to_miles
 from corridor.domain.weather import WeatherSample
 from corridor.planning.frames import MISSING
-from corridor.planning.models import Checkpoint, HourlyWindow, Plan, PlannedRoute, PlanRequest
+from corridor.planning.models import (
+    Checkpoint,
+    HourlyWindow,
+    Plan,
+    PlannedRest,
+    PlannedRoute,
+    PlanRequest,
+)
 
 GEOMETRY_TOLERANCE_DEG: Final = 0.0003  # ~30 m; keeps lines crisp at highway zoom levels
 COORD_DECIMALS: Final = 5
@@ -30,6 +37,7 @@ def plan_id(request: PlanRequest) -> str:
             "t": request.departure_local.isoformat(timespec="minutes"),
             "w": request.load_lb,
             "i": request.interval_mi,
+            "h": request.hos,
         },
         sort_keys=True,
     )
@@ -47,6 +55,7 @@ def present_plan(plan: Plan) -> dict[str, Any]:
             "destination": _place(plan.request.destination),
             "load_lb": plan.request.load_lb,
             "interval_mi": plan.request.interval_mi,
+            "hos": plan.request.hos,
             "wind_metric": "gust",
         },
         "routes": [_route(route, plan.destination_tz) for route in plan.routes],
@@ -96,7 +105,8 @@ def _route(route: PlannedRoute, destination_tz: ZoneInfo) -> dict[str, Any]:
         "id": route.id,
         "source": route.candidate.source,
         "distance_mi": round(meters_to_miles(route.candidate.length_m), 2),
-        "duration_s": round(route.candidate.duration_s),
+        "duration_s": round(route.trip_s),
+        "driving_s": round(route.candidate.duration_s),
         "arrival": _local_time(route.arrival, destination_tz),
         "highways": list(route.candidate.highways),
         "geometry": [_lonlat(x, y) for x, y in simplified.coords],
@@ -107,7 +117,20 @@ def _route(route: PlannedRoute, destination_tz: ZoneInfo) -> dict[str, Any]:
             "average_risk": None if risk.average_risk is None else round(risk.average_risk, 3),
             "worst_checkpoint": worst.position.index if worst else None,
         },
+        "rest_stops": [_rest(r) for r in route.rests],
         "checkpoints": [_checkpoint(c) for c in route.checkpoints],
+    }
+
+
+def _rest(rest: PlannedRest) -> dict[str, Any]:
+    return {
+        "kind": rest.kind.value,
+        "start": _local_time(rest.start, rest.tz),
+        "start_s": round(rest.trip_s),
+        "duration_s": round(rest.duration_s),
+        "mile": round(meters_to_miles(rest.distance_m), 2),
+        "lat": round(rest.point.lat, COORD_DECIMALS),
+        "lon": round(rest.point.lon, COORD_DECIMALS),
     }
 
 
@@ -120,7 +143,8 @@ def _checkpoint(checkpoint: Checkpoint) -> dict[str, Any]:
         "lat": round(position.point.lat, COORD_DECIMALS),
         "lon": round(position.point.lon, COORD_DECIMALS),
         "eta": _local_time(checkpoint.eta, checkpoint.tz),
-        "elapsed_s": round(position.elapsed_s),
+        "elapsed_s": round(checkpoint.trip_s),
+        "driving_s": round(position.elapsed_s),
         "line_fraction": round(checkpoint.line_fraction, 6),
         "weather": _weather(checkpoint.weather) if checkpoint.weather else None,
         "risk": _risk(checkpoint.classification) if checkpoint.classification else None,

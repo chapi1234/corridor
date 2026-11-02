@@ -36,3 +36,18 @@ def test_clamps_lookups() -> None:
 def test_rejects_degenerate_route() -> None:
     with pytest.raises(ValueError, match="positive"):
         TimeProfile.constant_speed(0, 10)
+
+
+def test_distance_at_inverts_elapsed_at() -> None:
+    profile = TimeProfile([TimeAnchor(1000, 50)], total_m=2000, total_s=150)
+
+    assert profile.distance_at(0) == 0
+    assert profile.distance_at(25) == pytest.approx(500)
+    assert profile.distance_at(100) == pytest.approx(1500)
+    assert profile.distance_at(999) == 2000
+
+
+def test_distance_at_returns_first_distance_of_a_stationary_stretch() -> None:
+    # Time is held between 400 m and 800 m (a backwards anchor was flattened).
+    profile = TimeProfile([TimeAnchor(800, 40), TimeAnchor(400, 60)], total_m=1000, total_s=100)
+    assert profile.distance_at(60) == pytest.approx(400)

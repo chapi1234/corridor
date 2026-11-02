@@ -110,6 +110,10 @@ components:
           $ref: '#/components/schemas/LocalTime'
         elapsed_s:
           type: integer
+          description: Seconds after departure, including rest.
+        driving_s:
+          type: integer
+          description: Driving time to reach the checkpoint.
         line_fraction:
           type: number
           format: double
@@ -128,6 +132,7 @@ components:
           - $ref: '#/components/schemas/HourlyWindow'
           nullable: true
       required:
+      - driving_s
       - elapsed_s
       - eta
       - hourly
@@ -286,10 +291,13 @@ components:
           format: double
         interval_mi:
           type: integer
+        hos:
+          type: boolean
         wind_metric:
           type: string
       required:
       - destination
+      - hos
       - interval_mi
       - load_lb
       - origin
@@ -304,6 +312,14 @@ components:
         * `10` - 10
         * `25` - 25
         * `50` - 50
+    KindEnum:
+      enum:
+      - break
+      - reset
+      type: string
+      description: |-
+        * `break` - break
+        * `reset` - reset
     LoadRuleEnum:
       enum:
       - wind_45_54_over_30k_lb
@@ -426,6 +442,11 @@ components:
           minimum: 0
         interval_mi:
           $ref: '#/components/schemas/IntervalMiEnum'
+        hos:
+          type: boolean
+          default: false
+          description: 'Insert FMCSA hours-of-service rest: a 30-min break after 8
+            h of driving and a 10-h reset after 11 h.'
       required:
       - departure_local
       - destination
@@ -526,6 +547,35 @@ components:
       - order
       - reason
       - route_id
+    RestStop:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        start:
+          $ref: '#/components/schemas/LocalTime'
+        start_s:
+          type: integer
+          description: Seconds after departure when the rest begins.
+        duration_s:
+          type: integer
+        mile:
+          type: number
+          format: double
+        lat:
+          type: number
+          format: double
+        lon:
+          type: number
+          format: double
+      required:
+      - duration_s
+      - kind
+      - lat
+      - lon
+      - mile
+      - start
+      - start_s
     ReverseResponse:
       type: object
       properties:
@@ -573,6 +623,9 @@ components:
           format: double
         duration_s:
           type: integer
+          description: Door-to-door time, including any rest.
+        driving_s:
+          type: integer
         arrival:
           $ref: '#/components/schemas/LocalTime'
         highways:
@@ -595,6 +648,10 @@ components:
             $ref: '#/components/schemas/TagsEnum'
         summary:
           $ref: '#/components/schemas/RouteSummary'
+        rest_stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/RestStop'
         checkpoints:
           type: array
           items:
@@ -603,10 +660,12 @@ components:
       - arrival
       - checkpoints
       - distance_mi
+      - driving_s
       - duration_s
       - geometry
       - highways
       - id
+      - rest_stops
       - source
       - summary
       - tags

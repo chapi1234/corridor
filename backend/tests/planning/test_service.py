@@ -8,7 +8,7 @@ from corridor.domain.ranking import Criterion, Tag
 from corridor.domain.risk import Level, LoadRule
 from corridor.planning.errors import InvalidPlanRequestError
 from corridor.planning.models import PlanRequest, WarningCode
-from tests.fakes import DENVER, KANSAS_CITY, FakeRouting, make_service
+from tests.fakes import DENVER, KANSAS_CITY, SPEED_MPS, FakeRouting, make_service
 
 REQUEST = PlanRequest(
     origin=DENVER,
@@ -142,3 +142,24 @@ async def test_validation(changes: dict, field: str) -> None:
     with pytest.raises(InvalidPlanRequestError) as excinfo:
         await make_service().build(replace(REQUEST, **changes))
     assert excinfo.value.field == field
+
+
+async def test_hours_of_service_rest_delays_later_checkpoints() -> None:
+    # Denver → Kansas City is ~9.6 h of driving: one 30-minute break at 8 h.
+    plain = (await make_service().build(REQUEST)).routes[0]
+    rested = (await make_service().build(replace(REQUEST, hos=True))).routes[0]
+
+    assert plain.rests == ()
+    assert [r.kind.value for r in rested.rests] == ["break"]
+    rest = rested.rests[0]
+    assert rest.trip_s == pytest.approx(8 * 3600)
+    assert rest.distance_m == pytest.approx(8 * 3600 * SPEED_MPS, rel=1e-3)
+    assert rested.trip_s == pytest.approx(plain.trip_s + 1800)
+    assert rested.arrival - plain.arrival == timedelta(minutes=30)
+    assert rested.risk.duration_s == pytest.approx(rested.trip_s)
+
+    for before, after in zip(plain.checkpoints, rested.checkpoints, strict=True):
+        delay = (after.eta - before.eta).total_seconds()
+        expected = 1800 if after.position.elapsed_s > 8 * 3600 else 0
+        assert delay == pytest.approx(expected, abs=1)
+        assert after.trip_s == pytest.approx(after.position.elapsed_s + expected, abs=1)

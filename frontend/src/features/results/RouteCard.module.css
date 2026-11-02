@@ -116,6 +116,10 @@
   color: var(--text-2);
 }
 
+.rests {
+  color: var(--text-3);
+}
+
 .worst {
   display: inline-flex;
   gap: var(--space-2);

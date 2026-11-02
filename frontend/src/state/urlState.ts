@@ -26,6 +26,7 @@ export function draftToSearch(draft: TripDraft): string {
     w: String(draft.loadLb),
     i: String(draft.intervalMi),
   })
+  if (draft.hos) params.set('h', '1')
   return `?${params}`
 }
 
@@ -46,5 +47,5 @@ export function draftFromSearch(search: string): TripDraft | null {
   ) {
     return null
   }
-  return { origin, destination, departureLocal, loadLb, intervalMi }
+  return { origin, destination, departureLocal, loadLb, intervalMi, hos: params.get('h') === '1' }
 }
