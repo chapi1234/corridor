@@ -4,8 +4,9 @@
   right: var(--space-4);
   bottom: var(--space-4);
   z-index: 4;
-  display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  /* A column whose body scrolls, however many alert and advisory notes sit above it. */
+  display: flex;
+  flex-direction: column;
   width: 340px;
   max-width: calc(100% - 2 * var(--space-4));
   border: 1px solid var(--line-2);
@@ -69,6 +70,8 @@
 
 .body {
   display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
   align-content: start;
   gap: var(--space-3);
   padding: var(--space-3);

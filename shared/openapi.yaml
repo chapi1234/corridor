@@ -110,6 +110,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReverseResponse'
           description: ''
+  /api/v1/timezone:
+    get:
+      operationId: v1_timezone_retrieve
+      description: |-
+        Departures are wall-clock time at the origin (D14); the form needs that zone to offer
+        sensible defaults and say which clock it means.
+      summary: IANA time zone at a coordinate
+      parameters:
+      - in: query
+        name: lat
+        schema:
+          type: number
+          format: double
+        required: true
+      - in: query
+        name: lon
+        schema:
+          type: number
+          format: double
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimezoneResponse'
+          description: ''
 components:
   schemas:
     Advisory:
@@ -947,6 +976,14 @@ components:
         * `fastest` - fastest
         * `shortest` - shortest
         * `lowest_risk` - lowest_risk
+    TimezoneResponse:
+      type: object
+      properties:
+        tz:
+          type: string
+          description: IANA zone, e.g. 'America/Denver'.
+      required:
+      - tz
     Warning:
       type: object
       properties:

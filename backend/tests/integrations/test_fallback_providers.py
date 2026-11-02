@@ -64,10 +64,17 @@ async def test_osrm_parses_geometry_anchors_and_highways(http: httpx.AsyncClient
 
 
 @respx.mock
-async def test_osrm_no_route(http: httpx.AsyncClient) -> None:
-    respx.get(url__startswith=f"{OSRM}/").mock(
-        return_value=httpx.Response(200, json={"code": "NoRoute", "routes": []})
-    )
+@pytest.mark.parametrize(
+    ("status", "body"),
+    [
+        # What router.project-osrm.org actually sends for an impossible route.
+        (400, {"message": "Impossible route between points", "code": "NoRoute"}),
+        (400, {"message": "Could not find a matching segment", "code": "NoSegment"}),
+        (200, {"code": "NoRoute", "routes": []}),
+    ],
+)
+async def test_osrm_no_route(http: httpx.AsyncClient, status: int, body: dict[str, object]) -> None:
+    respx.get(url__startswith=f"{OSRM}/").mock(return_value=httpx.Response(status, json=body))
     with pytest.raises(RouteNotFoundError):
         await OsrmClient(http, base_url=OSRM, backoff_s=0).calculate_routes(
             [A, B], depart_at=DEPART, gross_weight_kg=1, alternatives=0

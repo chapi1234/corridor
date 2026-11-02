@@ -54,6 +54,8 @@ interface Actions {
   swapEndpoints(): void
   showPlan(plan: PlanResponse): void
   editTrip(): void
+  /** Leave the form without re-planning; only meaningful while a plan exists. */
+  cancelEdit(): void
   setLoadOverride(loadLb: number | null): void
   selectRoute(routeId: string): void
   setHover(target: HoverTarget | null): void
@@ -126,6 +128,7 @@ export const useAppStore = create<State & Actions>()((set, get) => ({
       playing: false,
     }),
   editTrip: () => set({ editing: true, playing: false }),
+  cancelEdit: () => set((s) => ({ editing: s.plan === null })),
   setLoadOverride: (loadOverrideLb) => set({ loadOverrideLb }),
   selectRoute: (selectedRouteId) =>
     set((s) => ({

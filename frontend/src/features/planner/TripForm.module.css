@@ -138,3 +138,8 @@
     opacity: 0.4;
   }
 }
+
+.back {
+  justify-self: start;
+  margin-left: calc(-1 * var(--space-2));
+}

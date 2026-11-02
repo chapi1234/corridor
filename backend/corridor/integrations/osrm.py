@@ -25,6 +25,8 @@ from corridor.integrations.polyline import decode
 from corridor.planning.errors import RouteNotFoundError, UpstreamServiceError
 
 SERVICE: Final = "osrm"
+_NO_ROUTE_CODES: Final = ("NoRoute", "NoSegment")
+"""No path exists, or a point is too far from any road."""
 MAX_HIGHWAYS: Final = 3
 
 
@@ -57,13 +59,19 @@ class OsrmClient:
             "geometries": "polyline6",
             "steps": "true",
         }
-        data = await get_json(
-            self._http,
-            f"{self._base_url}/route/v1/driving/{coordinates}",
-            service=SERVICE,
-            params=params,
-            backoff_s=self._backoff_s,
-        )
+        try:
+            data = await get_json(
+                self._http,
+                f"{self._base_url}/route/v1/driving/{coordinates}",
+                service=SERVICE,
+                params=params,
+                backoff_s=self._backoff_s,
+            )
+        except UpstreamServiceError as exc:
+            # OSRM answers unroutable requests with HTTP 400 and a code in the body.
+            if exc.status == 400 and any(code in exc.message for code in _NO_ROUTE_CODES):
+                raise RouteNotFoundError("No route found between these places.") from exc
+            raise
         if data.get("code") == "NoRoute" or not data.get("routes"):
             raise RouteNotFoundError("No route found between these places.")
         if data.get("code") != "Ok":

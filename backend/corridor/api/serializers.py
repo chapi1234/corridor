@@ -100,6 +100,10 @@ class GeocodeResponseSerializer(serializers.Serializer[None]):
     results = PlaceResultSerializer(many=True)
 
 
+class TimezoneResponseSerializer(serializers.Serializer[None]):
+    tz = serializers.CharField(help_text="IANA zone, e.g. 'America/Denver'.")
+
+
 class ReverseResponseSerializer(serializers.Serializer[None]):
     label = serializers.CharField(allow_null=True)
 

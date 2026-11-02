@@ -56,6 +56,12 @@ export const api = {
     return request(`/api/v1/plans/${encodeURIComponent(planId)}`, { signal })
   },
 
+  async timezone(lat: number, lon: number, signal?: AbortSignal): Promise<string> {
+    const params = new URLSearchParams({ lat: String(lat), lon: String(lon) })
+    const data = await request<{ tz: string }>(`/api/v1/timezone?${params}`, { signal })
+    return data.tz
+  },
+
   async geocode(query: string, signal?: AbortSignal): Promise<PlaceResult[]> {
     const params = new URLSearchParams({ q: query })
     const data = await request<{ results: PlaceResult[] }>(`/api/v1/geocode?${params}`, {

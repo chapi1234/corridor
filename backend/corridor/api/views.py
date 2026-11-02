@@ -23,9 +23,11 @@ from corridor.api.serializers import (
     PlanResponseSerializer,
     PointQuerySerializer,
     ReverseResponseSerializer,
+    TimezoneResponseSerializer,
 )
 from corridor.domain.geometry import LatLon
 from corridor.domain.models import Place
+from corridor.integrations.timezones import timezone_at
 from corridor.planning.models import PlanRequest
 
 PLAN_CACHE_TTL_S: Final = 10 * 60
@@ -141,6 +143,27 @@ class ReverseGeocodeView(APIView):
 async def _reverse(point: LatLon) -> Place | None:
     async with dependencies.geocoder() as geocoder:
         return await geocoder.reverse(point)
+
+
+class TimezoneView(APIView):
+    """Departures are wall-clock time at the origin (D14); the form needs that zone to offer
+    sensible defaults and say which clock it means."""
+
+    throttle_scope = "geocode"
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("lat", float, required=True),
+            OpenApiParameter("lon", float, required=True),
+        ],
+        responses={200: TimezoneResponseSerializer},
+        summary="IANA time zone at a coordinate",
+    )
+    def get(self, request: Request) -> Response:
+        query = PointQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        point = LatLon(query.validated_data["lat"], query.validated_data["lon"])
+        return Response({"tz": timezone_at(point).key})
 
 
 class HealthView(APIView):

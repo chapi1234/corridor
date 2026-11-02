@@ -1,6 +1,6 @@
 import { useId } from 'react'
 
-import { nextFullHour, shiftHours, tomorrowAt } from '@/lib/localTime'
+import { BROWSER_TZ, nextFullHour, shiftHours, tomorrowAt, zoneAbbreviation } from '@/lib/localTime'
 
 import styles from './DepartureField.module.css'
 
@@ -8,15 +8,19 @@ interface DepartureFieldProps {
   value: string
   onChange(value: string): void
   error?: string | undefined
+  /** The origin's IANA zone, once known; quick picks and the hint use its clock. */
+  tz?: string | undefined
 }
 
 /** Departure as wall-clock time at the origin; the server applies the origin's zone (D14). */
-export function DepartureField({ value, onChange, error }: DepartureFieldProps) {
+export function DepartureField({ value, onChange, error, tz }: DepartureFieldProps) {
   const id = useId()
+  const zone = tz ?? BROWSER_TZ
+  const next = nextFullHour(zone)
   const quick = [
-    { label: 'Next hour', value: nextFullHour() },
-    { label: '+6 h', value: shiftHours(nextFullHour(), 6) },
-    { label: 'Tomorrow 06:00', value: tomorrowAt(6) },
+    { label: 'Next hour', value: next },
+    { label: '+6 h', value: shiftHours(next, 6) },
+    { label: 'Tomorrow 06:00', value: tomorrowAt(6, zone) },
   ]
 
   return (
@@ -25,7 +29,9 @@ export function DepartureField({ value, onChange, error }: DepartureFieldProps) 
         <label htmlFor={id} className="label">
           Departure
         </label>
-        <span className={styles.hint}>local time at origin</span>
+        <span className={styles.hint}>
+          {tz ? `origin time · ${zoneAbbreviation(tz)}` : 'local time at origin'}
+        </span>
       </div>
       <input
         id={id}

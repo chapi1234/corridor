@@ -226,6 +226,24 @@ def test_geocode_and_reverse(client: APIClient, monkeypatch: pytest.MonkeyPatch)
     assert client.get("/api/v1/geocode", {"q": "d"}).status_code == 400
 
 
+@pytest.mark.parametrize(
+    ("lat", "lon", "tz"),
+    [
+        (39.74, -104.99, "America/Denver"),
+        (40.71, -74.0, "America/New_York"),
+        (47.56, -52.71, "America/St_Johns"),
+    ],
+)
+def test_timezone_lookup(client: APIClient, lat: float, lon: float, tz: str) -> None:
+    response = client.get("/api/v1/timezone", {"lat": lat, "lon": lon})
+    assert response.status_code == 200
+    assert response.json() == {"tz": tz}
+
+
+def test_timezone_rejects_bad_coordinates(client: APIClient) -> None:
+    assert client.get("/api/v1/timezone", {"lat": 95, "lon": 0}).status_code == 400
+
+
 def test_health_and_schema(client: APIClient) -> None:
     assert client.get("/api/v1/health").json()["status"] == "ok"
     assert client.get("/api/v1/schema").status_code == 200

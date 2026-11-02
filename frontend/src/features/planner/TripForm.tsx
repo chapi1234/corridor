@@ -1,10 +1,12 @@
-import { ArrowDownUp, Route as RouteIcon } from 'lucide-react'
+import { ArrowDownUp, ArrowLeft, Route as RouteIcon } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 
 import type { ApiError } from '@/api/client'
+import { useTimezone } from '@/api/queries'
 import type { IntervalMi, PlanRequest } from '@/api/types'
 import { useAppStore, type TripDraft } from '@/state/store'
 import { toPlanRequest } from '@/state/tripRequest'
+import { BROWSER_TZ, nextFullHour } from '@/lib/localTime'
 import { Button, IconButton } from '@/ui/Button'
 import { Segmented } from '@/ui/Segmented'
 import { Switch } from '@/ui/Switch'
@@ -52,6 +54,20 @@ export function TripForm({ onSubmit, pending, error }: TripFormProps) {
   const draft = useAppStore((s) => s.draft)
   const updateDraft = useAppStore((s) => s.updateDraft)
   const swapEndpoints = useAppStore((s) => s.swapEndpoints)
+  const hasPlan = useAppStore((s) => s.plan !== null)
+  const cancelEdit = useAppStore((s) => s.cancelEdit)
+  const originTz = useTimezone(draft.origin).data
+
+  // The default departure was computed on the browser's clock. Once the origin's zone is
+  // known, move a default (or already-past) departure to the next hour at the origin.
+  useEffect(() => {
+    if (!originTz) return
+    const { departureLocal } = useAppStore.getState().draft
+    const originNext = nextFullHour(originTz)
+    if (departureLocal === nextFullHour(BROWSER_TZ) || departureLocal < originNext) {
+      updateDraft({ departureLocal: originNext })
+    }
+  }, [originTz, updateDraft])
   const [submitted, setSubmitted] = useState(false)
 
   const errors = submitted ? validate(draft) : {}
@@ -66,6 +82,18 @@ export function TripForm({ onSubmit, pending, error }: TripFormProps) {
   return (
     <form className={styles.form} onSubmit={submit} noValidate aria-busy={pending}>
       <header className={styles.intro}>
+        {hasPlan && (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<ArrowLeft size={14} />}
+            className={styles.back}
+            onClick={cancelEdit}
+            disabled={pending}
+          >
+            Back to results
+          </Button>
+        )}
         <h1 className={styles.title}>Plan a trip</h1>
         <p className={styles.lede}>
           Forecasts the weather your truck will drive into — at the hour it gets there — and weighs
@@ -108,6 +136,7 @@ export function TripForm({ onSubmit, pending, error }: TripFormProps) {
         <legend className="visually-hidden">Trip details</legend>
         <DepartureField
           value={draft.departureLocal}
+          tz={originTz}
           onChange={(departureLocal) => updateDraft({ departureLocal })}
           error={error?.fieldError('departure') ?? error?.fieldError('departure_local')}
         />
