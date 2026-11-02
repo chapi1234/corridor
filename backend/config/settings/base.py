@@ -60,6 +60,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "plans": env("THROTTLE_PLANS", default="30/min"),
         "geocode": env("THROTTLE_GEOCODE", default="240/min"),
+        "snapshots": env("THROTTLE_SNAPSHOTS", default="120/min"),
     },
     "NUM_PROXIES": env.int("NUM_PROXIES", default=0),
 }

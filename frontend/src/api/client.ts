@@ -51,6 +51,11 @@ export const api = {
     })
   },
 
+  /** A plan exactly as it was computed, for shared links. */
+  snapshot(planId: string, signal?: AbortSignal): Promise<PlanResponse> {
+    return request(`/api/v1/plans/${encodeURIComponent(planId)}`, { signal })
+  },
+
   async geocode(query: string, signal?: AbortSignal): Promise<PlaceResult[]> {
     const params = new URLSearchParams({ q: query })
     const data = await request<{ results: PlaceResult[] }>(`/api/v1/geocode?${params}`, {

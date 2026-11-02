@@ -97,6 +97,24 @@ def test_plan_is_cached_by_inputs(client: APIClient, monkeypatch: pytest.MonkeyP
     assert calls == 2
 
 
+def test_shared_plan_resolves_to_the_computed_snapshot(client: APIClient) -> None:
+    plan = post_plan(client).json()
+    cache.delete(f"plan:v1:{plan['plan_id']}")  # the 10-minute plan cache has expired
+
+    response = client.get(f"/api/v1/plans/{plan['plan_id']}")
+
+    assert response.status_code == 200
+    assert response.json() == plan
+
+
+def test_unknown_snapshot_is_a_404_problem(client: APIClient) -> None:
+    response = client.get("/api/v1/plans/0123456789abcdef")
+
+    assert response.status_code == 404
+    assert response["Content-Type"] == "application/problem+json"
+    assert response.json()["type"] == "/problems/snapshot-not-found"
+
+
 @pytest.mark.parametrize(
     ("changes", "field"),
     [

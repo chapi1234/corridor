@@ -1,10 +1,14 @@
-/** Shareable URLs: the trip inputs round-trip through the query string. */
+/**
+ * Shareable URLs: the trip inputs round-trip through the query string, and `p` names the
+ * computed plan so a shared link shows what the sender saw (falling back to the inputs).
+ */
 
 import type { IntervalMi, Place } from '@/api/types'
 
 import type { TripDraft } from './store'
 
 const INTERVALS: readonly IntervalMi[] = [10, 25, 50]
+const PLAN_ID = /^[0-9a-f]{16}$/
 
 function encodePlace(place: Place): string {
   return `${place.lat.toFixed(5)},${place.lon.toFixed(5)},${place.label}`
@@ -17,7 +21,7 @@ function decodePlace(value: string | null): Place | null {
   return Number.isFinite(parsed.lat) && Number.isFinite(parsed.lon) && parsed.label ? parsed : null
 }
 
-export function draftToSearch(draft: TripDraft): string {
+export function draftToSearch(draft: TripDraft, planId?: string): string {
   if (!draft.origin || !draft.destination) return ''
   const params = new URLSearchParams({
     o: encodePlace(draft.origin),
@@ -27,7 +31,13 @@ export function draftToSearch(draft: TripDraft): string {
     i: String(draft.intervalMi),
   })
   if (draft.hos) params.set('h', '1')
+  if (planId) params.set('p', planId)
   return `?${params}`
+}
+
+export function planIdFromSearch(search: string): string | null {
+  const id = new URLSearchParams(search).get('p')
+  return id && PLAN_ID.test(id) ? id : null
 }
 
 /** A complete draft from the URL, or null if the URL doesn't describe a trip. */

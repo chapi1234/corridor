@@ -8,11 +8,13 @@ from asgiref.sync import async_to_sync
 from django.conf import settings
 from django.core.cache import cache
 from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from corridor.api import dependencies
+from corridor.api.errors import problem
 from corridor.api.presenters import plan_id, present_plan
 from corridor.api.serializers import (
     GeocodeQuerySerializer,
@@ -27,6 +29,13 @@ from corridor.domain.models import Place
 from corridor.planning.models import PlanRequest
 
 PLAN_CACHE_TTL_S: Final = 10 * 60
+"""Identical requests within this window reuse the computed plan."""
+SNAPSHOT_TTL_S: Final = 7 * 24 * 60 * 60
+"""Shared links keep showing the plan as it was computed for this long."""
+
+
+def snapshot_key(plan_id: str) -> str:
+    return f"snapshot:v1:{plan_id}"
 
 
 class PlanView(APIView):
@@ -52,6 +61,30 @@ class PlanView(APIView):
         if body is None:
             body = async_to_sync(_build_plan)(plan_request)
             cache.set(key, body, PLAN_CACHE_TTL_S)
+            cache.set(snapshot_key(body["plan_id"]), body, SNAPSHOT_TTL_S)
+        return Response(body)
+
+
+class PlanSnapshotView(APIView):
+    throttle_scope = "snapshots"
+
+    @extend_schema(
+        responses={200: PlanResponseSerializer},
+        summary="A previously computed plan, as it was computed",
+        description=(
+            "Shared links resolve here. The forecast is the one fetched at `generated_at`; "
+            "clients should offer to re-plan when it is stale. Snapshots expire after 7 days."
+        ),
+    )
+    def get(self, request: Request, plan_id: str) -> Response:
+        body = cache.get(snapshot_key(plan_id))
+        if body is None:
+            return problem(
+                status.HTTP_404_NOT_FOUND,
+                "snapshot-not-found",
+                "Plan not found",
+                "This shared plan has expired or never existed. Plan the trip again.",
+            )
         return Response(body)
 
 

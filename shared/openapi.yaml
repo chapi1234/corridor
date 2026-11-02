@@ -61,6 +61,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/PlanResponse'
           description: ''
+  /api/v1/plans/{plan_id}:
+    get:
+      operationId: v1_plans_retrieve
+      description: Shared links resolve here. The forecast is the one fetched at `generated_at`;
+        clients should offer to re-plan when it is stale. Snapshots expire after 7
+        days.
+      summary: A previously computed plan, as it was computed
+      parameters:
+      - in: path
+        name: plan_id
+        schema:
+          type: string
+          pattern: ^[0-9a-f]{16}$
+        required: true
+      tags:
+      - v1
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanResponse'
+          description: ''
   /api/v1/reverse:
     get:
       operationId: v1_reverse_retrieve

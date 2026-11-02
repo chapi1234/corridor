@@ -18,7 +18,7 @@ import { useTripPlanner } from './useTripPlanner'
 const MapView = lazy(() => import('@/features/map/MapView'))
 
 export function App() {
-  const { submit, pending, error } = useTripPlanner()
+  const { submit, refresh, pending, error } = useTripPlanner()
   const editing = useAppStore((s) => s.editing)
   const hasPlan = useAppStore((s) => s.plan !== null)
   useShortcuts()
@@ -31,7 +31,7 @@ export function App() {
       <main className={styles.main} data-results={showResults}>
         <aside className={styles.panel} aria-label={showResults ? 'Route results' : 'Plan a trip'}>
           {showResults ? (
-            <ResultsPanel />
+            <ResultsPanel onRefresh={refresh} refreshing={pending} refreshError={error} />
           ) : (
             <TripForm onSubmit={submit} pending={pending} error={error} />
           )}

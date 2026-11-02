@@ -1,16 +1,25 @@
 import { Pencil, RotateCcw, TriangleAlert } from 'lucide-react'
 
+import type { ApiError } from '@/api/client'
 import { LoadField } from '@/features/planner/LoadField'
 import { formatLocal, formatPounds } from '@/domain/format'
 import { useScoredPlan } from '@/state/selectors'
 import { useAppStore } from '@/state/store'
 import { Button } from '@/ui/Button'
 
+import { FreshnessNotice } from './Freshness'
 import { RecommendationHero } from './RecommendationHero'
 import { RouteCard } from './RouteCard'
 import styles from './ResultsPanel.module.css'
+import { ShareButton } from './ShareButton'
 
-export function ResultsPanel() {
+interface ResultsPanelProps {
+  onRefresh(): void
+  refreshing: boolean
+  refreshError: ApiError | null
+}
+
+export function ResultsPanel({ onRefresh, refreshing, refreshError }: ResultsPanelProps) {
   const scored = useScoredPlan()
   const selectedRouteId = useAppStore((s) => s.selectedRouteId)
   const editTrip = useAppStore((s) => s.editTrip)
@@ -31,10 +40,20 @@ export function ResultsPanel() {
             {plan.inputs.interval_mi} mi{plan.inputs.hos && ' · HOS rest'}
           </span>
         </div>
-        <Button variant="ghost" size="sm" icon={<Pencil size={14} />} onClick={editTrip}>
-          Edit
-        </Button>
+        <div className={styles.actions}>
+          <ShareButton />
+          <Button variant="ghost" size="sm" icon={<Pencil size={14} />} onClick={editTrip}>
+            Edit
+          </Button>
+        </div>
       </div>
+
+      <FreshnessNotice
+        plan={plan}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        error={refreshError}
+      />
 
       <RecommendationHero scored={scored} />
 
