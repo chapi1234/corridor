@@ -46,6 +46,16 @@ class UpstreamServiceError(PlanningError):
     def rate_limited(self) -> bool:
         return self.status == 429
 
+    @property
+    def quota_window(self) -> str | None:
+        """Which quota a 429 refers to: "day", "hour" or "minute" (from the provider's
+        reason text); ``None`` if not a quota rejection or the window is unstated."""
+        if not self.rate_limited:
+            return None
+        text = self.message.lower()
+        windows = (("daily", "day"), ("hourly", "hour"), ("minutely", "minute"))
+        return next((window for word, window in windows if word in text), None)
+
 
 class IncompleteForecastError(UpstreamServiceError):
     """Some forecast batches failed; ``partial`` holds the locations that succeeded.

@@ -171,6 +171,35 @@ def test_upstream_rate_limit_maps_to_503_with_retry_after(
 
 
 @pytest.mark.parametrize(
+    ("reason", "title", "max_wait_s"),
+    [
+        ("Minutely API request limit exceeded.", "Weather provider is busy", 60),
+        ("Hourly API request limit exceeded.", "Hourly weather limit reached", 3600),
+        ("Daily API request limit exceeded.", "Daily weather limit reached", 86400),
+    ],
+)
+def test_rate_limit_message_matches_the_quota(
+    client: APIClient, monkeypatch: pytest.MonkeyPatch, reason: str, title: str, max_wait_s: int
+) -> None:
+    class RateLimitedService:
+        async def build(self, _: Any) -> None:
+            raise UpstreamServiceError("open-meteo", f"HTTP 429: {reason}", status=429)
+
+    @asynccontextmanager
+    async def limited() -> AsyncIterator[Any]:
+        yield RateLimitedService()
+
+    monkeypatch.setattr(dependencies, "planning_service", limited)
+    response = post_plan(client)
+
+    body = response.json()
+    assert response.status_code == 503
+    assert body["title"] == title
+    assert 0 < body["retry_after_s"] <= max_wait_s
+    assert response["Retry-After"] == str(body["retry_after_s"])
+
+
+@pytest.mark.parametrize(
     ("error", "status", "kind"),
     [
         (RouteNotFoundError("No truck route found."), 422, "/problems/no-route"),
