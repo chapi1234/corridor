@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from corridor.domain.alerts import AlertCategory, AlertSeverity, WeatherAlert
 from corridor.domain.geometry import LatLon
 from corridor.domain.ranking import Criterion, Tag
 from corridor.domain.risk import Level, LoadRule
@@ -14,6 +15,7 @@ from tests.fakes import (
     DENVER,
     KANSAS_CITY,
     SPEED_MPS,
+    FakeAlerts,
     FakeRouting,
     FakeWeather,
     make_service,
@@ -207,3 +209,49 @@ async def test_checkpoint_rate_limit_fails_the_plan() -> None:
     with pytest.raises(IncompleteForecastError) as caught:
         await make_service(weather_provider=provider).build(REQUEST)
     assert caught.value.rate_limited
+
+
+WIND_WARNING = WeatherAlert(
+    id="urn:oid:wind",
+    event="High Wind Warning",
+    category=AlertCategory.WIND,
+    severity=AlertSeverity.SEVERE,
+    headline="High Wind Warning",
+    area="Western Kansas",
+    starts=datetime(2026, 11, 3, 13, tzinfo=UTC),
+    ends=datetime(2026, 11, 3, 15, tzinfo=UTC),
+)
+
+
+def wind_warning_in_western_kansas(point: LatLon) -> tuple[WeatherAlert, ...]:
+    return (WIND_WARNING,) if -101.5 <= point.lon <= -99.5 else ()
+
+
+async def test_alerts_are_placed_on_the_route_with_eta() -> None:
+    alerts = FakeAlerts(wind_warning_in_western_kansas)
+    plan = await make_service(alerts=alerts).build(REQUEST)
+
+    [placed] = plan.routes[0].alerts
+    assert placed.alert.event == "High Wind Warning"
+    assert 0 < placed.start_m < placed.end_m < plan.routes[0].candidate.length_m
+    assert placed.enter < placed.exit
+    # Leaving Denver at 13:00 UTC, the truck reaches western Kansas after the 15:00 end.
+    assert not placed.in_effect
+    assert WarningCode.ALERTS_UNAVAILABLE not in {w.code for w in plan.warnings}
+
+
+async def test_alert_failure_only_warns() -> None:
+    plan = await make_service(alerts=FakeAlerts(fail=True)).build(REQUEST)
+
+    assert all(r.alerts == () for r in plan.routes)
+    assert WarningCode.ALERTS_UNAVAILABLE in {w.code for w in plan.warnings}
+
+
+async def test_alert_locations_fit_the_budget() -> None:
+    unbounded, bounded = FakeAlerts(), FakeAlerts()
+    await make_service(alerts=unbounded).build(REQUEST)
+    config = PlanningConfig(heatmap_target_points=60, alerts_location_budget=60)
+    await make_service(alerts=bounded, config=config).build(REQUEST)
+
+    assert len(unbounded.requested) > 60
+    assert 0 < len(bounded.requested) <= 60

@@ -29,6 +29,8 @@
   --route-casing: #031015;
   /* US services-sign blue, for mandatory rest stops */
   --rest: #2a6fdb;
+  /* Official NWS alerts: outside the risk palette so they never read as a rule level */
+  --nws: #ff5fa2;
 
   /* Risk scale */
   --risk-0: #36d399;
@@ -105,6 +107,7 @@
   --route-muted: #7f9aa2;
   --route-casing: #ffffff;
   --rest: #1f5fc4;
+  --nws: #c2185b;
 
   --risk-0: #17955f;
   --risk-1: #b8930b;

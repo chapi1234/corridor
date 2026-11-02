@@ -23,6 +23,7 @@ from corridor.planning.models import (
     PlannedRest,
     PlannedRoute,
     PlanRequest,
+    RouteAlert,
 )
 
 GEOMETRY_TOLERANCE_DEG: Final = 0.0003  # ~30 m; keeps lines crisp at highway zoom levels
@@ -118,6 +119,7 @@ def _route(route: PlannedRoute, destination_tz: ZoneInfo) -> dict[str, Any]:
             "worst_checkpoint": worst.position.index if worst else None,
         },
         "rest_stops": [_rest(r) for r in route.rests],
+        "alerts": [_alert(a) for a in route.alerts],
         "checkpoints": [_checkpoint(c) for c in route.checkpoints],
     }
 
@@ -131,6 +133,25 @@ def _rest(rest: PlannedRest) -> dict[str, Any]:
         "mile": round(meters_to_miles(rest.distance_m), 2),
         "lat": round(rest.point.lat, COORD_DECIMALS),
         "lon": round(rest.point.lon, COORD_DECIMALS),
+    }
+
+
+def _alert(placed: RouteAlert) -> dict[str, Any]:
+    alert = placed.alert
+    return {
+        "id": alert.id,
+        "event": alert.event,
+        "category": alert.category.value,
+        "severity": alert.severity.value,
+        "headline": alert.headline,
+        "area": alert.area,
+        "starts": _local_time(alert.starts, placed.tz) if alert.starts else None,
+        "ends": _local_time(alert.ends, placed.tz) if alert.ends else None,
+        "start_mi": round(meters_to_miles(placed.start_m), 2),
+        "end_mi": round(meters_to_miles(placed.end_m), 2),
+        "enter": _local_time(placed.enter, placed.tz),
+        "exit": _local_time(placed.exit, placed.tz),
+        "in_effect": placed.in_effect,
     }
 
 

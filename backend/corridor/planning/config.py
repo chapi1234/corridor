@@ -39,6 +39,11 @@ class PlanningConfig:
     weather_location_budget: int = 360
     """Forecast locations per plan. Open-Meteo's free tier counts every location in a
     request as one call and allows ~600 a minute, so a plan must stay well under that."""
+    alerts_sample_spacing_m: float = 20_000
+    """NWS forecast zones are roughly county-sized; sampling every 20 km catches each one."""
+    alerts_grid_steps_deg: tuple[float, ...] = (0.2, 0.3, 0.4, 0.5)
+    alerts_location_budget: int = 160
+    """NWS answers one location per request, so long trips sample more coarsely."""
     checkpoint_window_hours: int = 6
     """Hours of forecast either side of each checkpoint ETA returned for the detail chart."""
 

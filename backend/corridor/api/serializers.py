@@ -12,6 +12,7 @@ from typing import Any
 
 from rest_framework import serializers
 
+from corridor.domain.alerts import AlertCategory, AlertSeverity
 from corridor.domain.geometry import LatLon
 from corridor.domain.hos import RestKind
 from corridor.domain.models import Place
@@ -175,6 +176,24 @@ class RestStopSerializer(serializers.Serializer[None]):
     lon = serializers.FloatField()
 
 
+class RouteAlertSerializer(serializers.Serializer[None]):
+    id = serializers.CharField()
+    event = serializers.CharField(help_text="NWS product name, e.g. 'Winter Storm Warning'.")
+    category = serializers.ChoiceField(choices=_choices(AlertCategory))
+    severity = serializers.ChoiceField(choices=_choices(AlertSeverity))
+    headline = serializers.CharField()
+    area = serializers.CharField()
+    starts = LocalTimeSerializer(allow_null=True)
+    ends = LocalTimeSerializer(allow_null=True)
+    start_mi = serializers.FloatField()
+    end_mi = serializers.FloatField()
+    enter = LocalTimeSerializer(help_text="When the truck enters the alert area.")
+    exit = LocalTimeSerializer()
+    in_effect = serializers.BooleanField(
+        help_text="Whether the hazard is in effect while the truck is inside the area."
+    )
+
+
 class RouteSerializer(serializers.Serializer[None]):
     id = serializers.CharField()
     source = serializers.ChoiceField(choices=["primary", "alternative", "via"])
@@ -190,6 +209,7 @@ class RouteSerializer(serializers.Serializer[None]):
     tags = serializers.ListField(child=serializers.ChoiceField(choices=_choices(Tag)))
     summary = RouteSummarySerializer()
     rest_stops = RestStopSerializer(many=True)
+    alerts = RouteAlertSerializer(many=True, help_text="Official NWS alerts along the route.")
     checkpoints = CheckpointSerializer(many=True)
 
 

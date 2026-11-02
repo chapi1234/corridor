@@ -1,6 +1,8 @@
+import { Siren } from 'lucide-react'
 import { memo } from 'react'
 
 import type { RestStop } from '@/api/types'
+import { activeEvents } from '@/domain/alerts'
 import { formatDuration, formatLocal, formatMiles } from '@/domain/format'
 import { FACTOR_LABEL, TAG_LABEL } from '@/domain/levels'
 import { HIGH, NO_TRAVEL, SEVERE } from '@/domain/risk'
@@ -27,6 +29,7 @@ export const RouteCard = memo(function RouteCard({ scored, selected }: RouteCard
   const { route, risk, tags } = scored
   const worst = worstCheckpoint(scored)
   const miles = risk.milesByLevel
+  const alerts = activeEvents(route)
 
   return (
     <button
@@ -70,6 +73,16 @@ export const RouteCard = memo(function RouteCard({ scored, selected }: RouteCard
           <dd className="num">{risk.averageRisk === null ? '—' : risk.averageRisk.toFixed(2)}</dd>
         </div>
       </dl>
+
+      {alerts.length > 0 && (
+        <p className={styles.alerts}>
+          <Siren size={12} aria-hidden />
+          <span>
+            NWS: {alerts[0]}
+            {alerts.length > 1 && ` +${alerts.length - 1} more`} in effect as you pass
+          </span>
+        </p>
+      )}
 
       <div className={styles.footer}>
         <span className={styles.arrival}>

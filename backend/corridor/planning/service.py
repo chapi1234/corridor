@@ -12,6 +12,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from corridor.domain.alerts import WeatherAlert, alert_spans
 from corridor.domain.geometry import LatLon, Polyline
 from corridor.domain.hos import DutySchedule
 from corridor.domain.models import RouteCandidate
@@ -40,9 +41,10 @@ from corridor.planning.models import (
     PlannedRoute,
     PlanRequest,
     PlanWarning,
+    RouteAlert,
     WarningCode,
 )
-from corridor.planning.ports import RoutingProvider, WeatherProvider
+from corridor.planning.ports import AlertsProvider, RoutingProvider, WeatherProvider
 from corridor.planning.projection import LocalProjection
 
 ROUTE_LABELS = "ABCDEFGH"
@@ -85,11 +87,13 @@ class PlanningService:
         weather: WeatherProvider,
         *,
         timezone_at: Callable[[LatLon], ZoneInfo],
+        alerts: AlertsProvider | None = None,
         clock: Callable[[], datetime] = _utc_now,
         config: PlanningConfig = DEFAULT_CONFIG,
     ) -> None:
         self._routing = routing
         self._weather = weather
+        self._alerts = alerts
         self._timezone_at = timezone_at
         self._clock = clock
         self._config = config
@@ -134,11 +138,18 @@ class PlanningService:
         )
 
         with _timed(timings, "weather"):
-            # Checkpoints first: route risk must be complete; the heatmap may degrade.
-            forecasts = await self._weather.hourly_forecast(
-                sorted(checkpoint_locations, key=_coords), start=start, end=end
-            )
-            grid_forecasts, heatmap_complete = await self._grid_forecasts(grid, start, end)
+            # Alerts are advisory and never fail the plan; they overlap the forecasts.
+            alerts_task = asyncio.create_task(self._route_alerts(timings_by_route))
+            try:
+                # Checkpoints first: route risk must be complete; the heatmap may degrade.
+                forecasts = await self._weather.hourly_forecast(
+                    sorted(checkpoint_locations, key=_coords), start=start, end=end
+                )
+                grid_forecasts, heatmap_complete = await self._grid_forecasts(grid, start, end)
+            except BaseException:
+                alerts_task.cancel()
+                raise
+            alert_samples, alerts_complete = await alerts_task
 
         with _timed(timings, "scoring"):
             routes = self._score_routes(
@@ -146,7 +157,14 @@ class PlanningService:
             )
             ranking = rank([r.risk for r in routes])
             tags = assign_tags([r.risk for r in routes], ranking)
-            routes = [replace(r, tags=tuple(tags[r.id])) for r in routes]
+            routes = [
+                replace(
+                    r,
+                    tags=tuple(tags[r.id]),
+                    alerts=self._place_alerts(timing, samples, departure),
+                )
+                for r, timing, samples in zip(routes, timings_by_route, alert_samples, strict=True)
+            ]
             grid_step = self._config.weather_grid_deg
             heatmap = build_frames(
                 grid.points,
@@ -170,7 +188,14 @@ class PlanningService:
             ranking=ranking,
             heatmap=heatmap,
             routing_source=self._routing.display_name,
-            warnings=tuple(self._warnings(routes, step=step, heatmap_complete=heatmap_complete)),
+            warnings=tuple(
+                self._warnings(
+                    routes,
+                    step=step,
+                    heatmap_complete=heatmap_complete,
+                    alerts_complete=alerts_complete,
+                )
+            ),
             timings_ms=timings,
         )
 
@@ -261,6 +286,60 @@ class PlanningService:
         except UpstreamServiceError as exc:
             logger.warning("Heatmap weather unavailable: %s", exc)
             return {}, False
+
+    async def _route_alerts(
+        self, timings: Sequence[_RouteTiming]
+    ) -> tuple[list[_AlertSamples], bool]:
+        """NWS alerts at points sampled along each route, in route order.
+
+        Returns per-route ``(distance_m, alerts)`` samples and whether every point answered.
+        """
+        if self._alerts is None:
+            return [[] for _ in timings], True
+        spacing = self._config.alerts_sample_spacing_m
+        routes = [
+            [
+                (d, t.polyline.point_at(d))
+                for d in (*_frange(0, t.polyline.total_m, spacing), t.polyline.total_m)
+            ]
+            for t in timings
+        ]
+        points = [p for route in routes for _, p in route]
+        step = self._config.alerts_grid_steps_deg[-1]
+        for candidate in self._config.alerts_grid_steps_deg:
+            if len({snap(p, candidate) for p in points}) <= self._config.alerts_location_budget:
+                step = candidate
+                break
+        locations = {snap(p, step) for p in points}
+        try:
+            found = await self._alerts.active_alerts(sorted(locations, key=_coords))
+        except UpstreamServiceError as exc:
+            logger.warning("Weather alerts unavailable: %s", exc)
+            return [[] for _ in timings], False
+        samples = [
+            [(d, found[snap(p, step)]) for d, p in route if snap(p, step) in found]
+            for route in routes
+        ]
+        return samples, len(found) == len(locations)
+
+    def _place_alerts(
+        self, timing: _RouteTiming, samples: _AlertSamples, departure: datetime
+    ) -> tuple[RouteAlert, ...]:
+        def at(distance_m: float) -> datetime:
+            driving_s = timing.profile.elapsed_at(distance_m)
+            return departure + timedelta(seconds=timing.schedule.clock_s(driving_s))
+
+        return tuple(
+            RouteAlert(
+                alert=span.alert,
+                start_m=span.start_m,
+                end_m=span.end_m,
+                enter=at(span.start_m),
+                exit=at(span.end_m),
+                tz=self._timezone_at(timing.polyline.point_at(span.start_m)),
+            )
+            for span in alert_spans(samples, total_m=timing.polyline.total_m)
+        )
 
     def _timing(self, candidate: RouteCandidate, request: PlanRequest) -> _RouteTiming:
         polyline = Polyline(candidate.points)
@@ -373,7 +452,12 @@ class PlanningService:
         )
 
     def _warnings(
-        self, routes: Sequence[PlannedRoute], *, step: float, heatmap_complete: bool
+        self,
+        routes: Sequence[PlannedRoute],
+        *,
+        step: float,
+        heatmap_complete: bool,
+        alerts_complete: bool = True,
     ) -> Iterator[PlanWarning]:
         if len(routes) < self._config.route_count:
             yield PlanWarning(
@@ -399,6 +483,22 @@ class PlanningService:
                 "The weather provider's rate limit was reached, so the corridor heatmap is "
                 "incomplete. Route risk is unaffected.",
             )
+        if not alerts_complete:
+            yield PlanWarning(
+                WarningCode.ALERTS_UNAVAILABLE,
+                "Some official NWS alerts could not be retrieved; check weather.gov before "
+                "departure. Route risk is unaffected.",
+            )
+
+
+_AlertSamples = list[tuple[float, tuple[WeatherAlert, ...]]]
+
+
+def _frange(start: float, stop: float, step: float) -> Iterator[float]:
+    value = start
+    while value < stop:
+        yield value
+        value += step
 
 
 def _coords(point: LatLon) -> tuple[float, float]:

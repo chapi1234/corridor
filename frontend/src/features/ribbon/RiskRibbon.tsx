@@ -157,6 +157,7 @@ function draw(canvas: HTMLCanvasElement, input: DrawInput): void {
     axis: cssColor('--text-3'),
     accent: cssColor('--accent'),
     rest: cssColor('--rest'),
+    nws: cssColor('--nws'),
     ink: cssColor('--text-1'),
     bg: cssColor('--bg-0'),
   }
@@ -203,6 +204,14 @@ function draw(canvas: HTMLCanvasElement, input: DrawInput): void {
       ctx.strokeStyle = colors.accent
       ctx.lineWidth = 1
       ctx.strokeRect(0.5, top + 0.5, x(route.route.distance_mi) - 1, ROW_H - 1)
+    }
+
+    // NWS alerts in effect as the truck passes: a rule in the gap above the strip.
+    ctx.fillStyle = colors.nws
+    for (const alert of route.route.alerts) {
+      if (!alert.in_effect) continue
+      const left = x(alert.start_mi)
+      ctx.fillRect(left, top - 5, Math.max(x(alert.end_mi) - left, 2), 2)
     }
 
     // Mandatory rest stops: a services-blue pin at the mile where the driver stops.

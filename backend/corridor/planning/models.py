@@ -7,6 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 from zoneinfo import ZoneInfo
 
+from corridor.domain.alerts import WeatherAlert
 from corridor.domain.geometry import LatLon
 from corridor.domain.hos import RestKind
 from corridor.domain.models import Place, RouteCandidate
@@ -70,6 +71,24 @@ class PlannedRest:
 
 
 @dataclass(frozen=True, slots=True)
+class RouteAlert:
+    """An official alert along a route: where the truck is inside its area, and when."""
+
+    alert: WeatherAlert
+    start_m: float
+    end_m: float
+    enter: datetime
+    exit: datetime
+    tz: ZoneInfo
+    """Local time zone where the truck enters the area."""
+
+    @property
+    def in_effect(self) -> bool:
+        """Whether the hazard is in effect while the truck is inside the area."""
+        return self.alert.in_effect_between(self.enter, self.exit)
+
+
+@dataclass(frozen=True, slots=True)
 class PlannedRoute:
     id: str
     candidate: RouteCandidate
@@ -80,6 +99,7 @@ class PlannedRoute:
     trip_s: float
     """Door-to-door time including rest; equals the driving time without HOS."""
     rests: tuple[PlannedRest, ...] = ()
+    alerts: tuple[RouteAlert, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +124,7 @@ class WarningCode(StrEnum):
     FORECAST_UNAVAILABLE = "forecast_unavailable"
     SHARED_FORECASTS = "shared_forecasts"
     HEATMAP_INCOMPLETE = "heatmap_incomplete"
+    ALERTS_UNAVAILABLE = "alerts_unavailable"
 
 
 @dataclass(frozen=True, slots=True)

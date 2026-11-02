@@ -112,6 +112,24 @@ paths:
           description: ''
 components:
   schemas:
+    CategoryEnum:
+      enum:
+      - winter
+      - wind
+      - visibility
+      - storm
+      - flood
+      - tropical
+      - other
+      type: string
+      description: |-
+        * `winter` - winter
+        * `wind` - wind
+        * `visibility` - visibility
+        * `storm` - storm
+        * `flood` - flood
+        * `tropical` - tropical
+        * `other` - other
     Checkpoint:
       type: object
       properties:
@@ -173,12 +191,14 @@ components:
       - forecast_unavailable
       - shared_forecasts
       - heatmap_incomplete
+      - alerts_unavailable
       type: string
       description: |-
         * `fewer_routes` - fewer_routes
         * `forecast_unavailable` - forecast_unavailable
         * `shared_forecasts` - shared_forecasts
         * `heatmap_incomplete` - heatmap_incomplete
+        * `alerts_unavailable` - alerts_unavailable
     DecidingCriterionEnum:
       enum:
       - no_travel_miles
@@ -679,11 +699,17 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RestStop'
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteAlert'
+          description: Official NWS alerts along the route.
         checkpoints:
           type: array
           items:
             $ref: '#/components/schemas/Checkpoint'
       required:
+      - alerts
       - arrival
       - checkpoints
       - distance_mi
@@ -696,6 +722,60 @@ components:
       - source
       - summary
       - tags
+    RouteAlert:
+      type: object
+      properties:
+        id:
+          type: string
+        event:
+          type: string
+          description: NWS product name, e.g. 'Winter Storm Warning'.
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        severity:
+          $ref: '#/components/schemas/SeverityEnum'
+        headline:
+          type: string
+        area:
+          type: string
+        starts:
+          allOf:
+          - $ref: '#/components/schemas/LocalTime'
+          nullable: true
+        ends:
+          allOf:
+          - $ref: '#/components/schemas/LocalTime'
+          nullable: true
+        start_mi:
+          type: number
+          format: double
+        end_mi:
+          type: number
+          format: double
+        enter:
+          allOf:
+          - $ref: '#/components/schemas/LocalTime'
+          description: When the truck enters the alert area.
+        exit:
+          $ref: '#/components/schemas/LocalTime'
+        in_effect:
+          type: boolean
+          description: Whether the hazard is in effect while the truck is inside the
+            area.
+      required:
+      - area
+      - category
+      - end_mi
+      - ends
+      - enter
+      - event
+      - exit
+      - headline
+      - id
+      - in_effect
+      - severity
+      - start_mi
+      - starts
     RouteSummary:
       type: object
       properties:
@@ -722,6 +802,20 @@ components:
       - miles_by_level
       - unknown_miles
       - worst_checkpoint
+    SeverityEnum:
+      enum:
+      - extreme
+      - severe
+      - moderate
+      - minor
+      - unknown
+      type: string
+      description: |-
+        * `extreme` - extreme
+        * `severe` - severe
+        * `moderate` - moderate
+        * `minor` - minor
+        * `unknown` - unknown
     SourceEnum:
       enum:
       - primary

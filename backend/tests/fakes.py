@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from itertools import pairwise
 from zoneinfo import ZoneInfo
 
+from corridor.domain.alerts import WeatherAlert
 from corridor.domain.geometry import LatLon, Polyline
 from corridor.domain.models import Place, RouteCandidate
 from corridor.domain.weather import HourlySeries
@@ -112,6 +113,24 @@ class FakeWeather:
         return result
 
 
+AlertsFn = Callable[[LatLon], tuple[WeatherAlert, ...]]
+
+
+@dataclass
+class FakeAlerts:
+    alerts_at: AlertsFn = lambda _: ()
+    fail: bool = False
+    requested: list[LatLon] = field(default_factory=list)
+
+    async def active_alerts(
+        self, points: Sequence[LatLon]
+    ) -> dict[LatLon, tuple[WeatherAlert, ...]]:
+        self.requested.extend(points)
+        if self.fail:
+            raise UpstreamServiceError("nws", "HTTP 503", status=503)
+        return {p: self.alerts_at(p) for p in points}
+
+
 def denver_tz(_: LatLon) -> ZoneInfo:
     return ZoneInfo("America/Denver")
 
@@ -122,10 +141,12 @@ def make_service(
     routing: FakeRouting | None = None,
     config: PlanningConfig | None = None,
     weather_provider: FakeWeather | None = None,
+    alerts: FakeAlerts | None = None,
 ) -> PlanningService:
     return PlanningService(
         routing or FakeRouting(),
         weather_provider or FakeWeather(weather),
+        alerts=alerts,
         timezone_at=denver_tz,
         clock=lambda: NOW,
         config=config or PlanningConfig(heatmap_target_points=60),

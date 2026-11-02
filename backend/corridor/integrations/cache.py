@@ -12,15 +12,18 @@ from typing import Final
 
 from django.core.cache import BaseCache
 
+from corridor.domain.alerts import WeatherAlert
 from corridor.domain.geometry import LatLon
 from corridor.domain.models import Place
 from corridor.domain.weather import HourlySeries
 from corridor.planning.errors import IncompleteForecastError
-from corridor.planning.ports import Geocoder, WeatherProvider
+from corridor.planning.ports import AlertsProvider, Geocoder, WeatherProvider
 
 WEATHER_TTL_S: Final = 30 * 60
 GEOCODE_TTL_S: Final = 24 * 60 * 60
 REVERSE_TTL_S: Final = 7 * 24 * 60 * 60
+ALERTS_TTL_S: Final = 5 * 60
+"""NWS updates alerts continuously; a short TTL only absorbs repeated plans."""
 _KEY_VERSION: Final = "v1"
 
 
@@ -53,6 +56,29 @@ class CachedWeatherProvider:
     ) -> None:
         if series:
             await self._cache.aset_many({keys[p]: s for p, s in series.items()}, self._ttl_s)
+
+
+class CachedAlertsProvider:
+    def __init__(self, inner: AlertsProvider, cache: BaseCache, *, ttl_s: int = ALERTS_TTL_S):
+        self._inner = inner
+        self._cache = cache
+        self._ttl_s = ttl_s
+
+    async def active_alerts(
+        self, points: Sequence[LatLon]
+    ) -> dict[LatLon, tuple[WeatherAlert, ...]]:
+        keys = {p: f"alerts:{_KEY_VERSION}:{p.lat:.4f},{p.lon:.4f}" for p in dict.fromkeys(points)}
+        cached: dict[str, tuple[WeatherAlert, ...]] = await self._cache.aget_many(keys.values())
+        result = {point: cached[key] for point, key in keys.items() if key in cached}
+        missing = [point for point in keys if point not in result]
+        if missing:
+            fetched = await self._inner.active_alerts(missing)
+            if fetched:
+                await self._cache.aset_many(
+                    {keys[p]: alerts for p, alerts in fetched.items()}, self._ttl_s
+                )
+            result |= fetched
+        return result
 
 
 class CachedGeocoder:

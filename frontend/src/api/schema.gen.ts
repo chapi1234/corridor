@@ -82,6 +82,17 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description * `winter` - winter
+         *     * `wind` - wind
+         *     * `visibility` - visibility
+         *     * `storm` - storm
+         *     * `flood` - flood
+         *     * `tropical` - tropical
+         *     * `other` - other
+         * @enum {string}
+         */
+        CategoryEnum: "winter" | "wind" | "visibility" | "storm" | "flood" | "tropical" | "other";
         Checkpoint: {
             index: number;
             /** Format: double */
@@ -108,9 +119,10 @@ export interface components {
          *     * `forecast_unavailable` - forecast_unavailable
          *     * `shared_forecasts` - shared_forecasts
          *     * `heatmap_incomplete` - heatmap_incomplete
+         *     * `alerts_unavailable` - alerts_unavailable
          * @enum {string}
          */
-        CodeEnum: "fewer_routes" | "forecast_unavailable" | "shared_forecasts" | "heatmap_incomplete";
+        CodeEnum: "fewer_routes" | "forecast_unavailable" | "shared_forecasts" | "heatmap_incomplete" | "alerts_unavailable";
         /**
          * @description * `no_travel_miles` - no_travel_miles
          *     * `severe_miles` - severe_miles
@@ -302,7 +314,29 @@ export interface components {
             tags: components["schemas"]["TagsEnum"][];
             summary: components["schemas"]["RouteSummary"];
             rest_stops: components["schemas"]["RestStop"][];
+            /** @description Official NWS alerts along the route. */
+            alerts: components["schemas"]["RouteAlert"][];
             checkpoints: components["schemas"]["Checkpoint"][];
+        };
+        RouteAlert: {
+            id: string;
+            /** @description NWS product name, e.g. 'Winter Storm Warning'. */
+            event: string;
+            category: components["schemas"]["CategoryEnum"];
+            severity: components["schemas"]["SeverityEnum"];
+            headline: string;
+            area: string;
+            starts: components["schemas"]["LocalTime"] | null;
+            ends: components["schemas"]["LocalTime"] | null;
+            /** Format: double */
+            start_mi: number;
+            /** Format: double */
+            end_mi: number;
+            /** @description When the truck enters the alert area. */
+            enter: components["schemas"]["LocalTime"];
+            exit: components["schemas"]["LocalTime"];
+            /** @description Whether the hazard is in effect while the truck is inside the area. */
+            in_effect: boolean;
         };
         RouteSummary: {
             /** @description Miles at Low, Moderate, High, Severe, No Travel. */
@@ -313,6 +347,15 @@ export interface components {
             average_risk: number | null;
             worst_checkpoint: number | null;
         };
+        /**
+         * @description * `extreme` - extreme
+         *     * `severe` - severe
+         *     * `moderate` - moderate
+         *     * `minor` - minor
+         *     * `unknown` - unknown
+         * @enum {string}
+         */
+        SeverityEnum: "extreme" | "severe" | "moderate" | "minor" | "unknown";
         /**
          * @description * `primary` - primary
          *     * `alternative` - alternative

@@ -27,6 +27,7 @@ export function Legend() {
   const scored = useScoredPlan()
   const hasRests = scored?.plan.routes.some((r) => r.rest_stops.length > 0) ?? false
   const calm = scored ? isCalmHour(scored.plan.heatmap, hour, scored.loadLb) : false
+  const hasAlerts = scored?.plan.routes.some((r) => r.alerts.some((a) => a.in_effect)) ?? false
 
   return (
     <aside className={styles.legend} aria-label="Map legend">
@@ -42,6 +43,12 @@ export function Legend() {
           <RiskSwatch level={null} />
           No forecast
         </li>
+        {hasAlerts && (
+          <li className={styles.rest}>
+            <span className={styles.nwsIcon} aria-hidden />
+            NWS alert in effect (ribbon)
+          </li>
+        )}
         {hasRests && (
           <li className={styles.rest}>
             <span className={styles.restIcon} aria-hidden />

@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
 
+from corridor.domain.alerts import WeatherAlert
 from corridor.domain.geometry import LatLon
 from corridor.domain.models import Place, RouteCandidate
 from corridor.domain.weather import HourlySeries
@@ -37,6 +38,14 @@ class WeatherProvider(Protocol):
         self, points: Sequence[LatLon], *, start: datetime, end: datetime
     ) -> dict[LatLon, HourlySeries]:
         """Hourly series covering ``start``..``end`` (inclusive, UTC hours) keyed by input point."""
+        ...
+
+
+class AlertsProvider(Protocol):
+    async def active_alerts(
+        self, points: Sequence[LatLon]
+    ) -> dict[LatLon, tuple[WeatherAlert, ...]]:
+        """Alerts in effect or upcoming at each point; points that failed are absent."""
         ...
 
 

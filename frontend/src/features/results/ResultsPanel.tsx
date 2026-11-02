@@ -7,6 +7,7 @@ import { useScoredPlan } from '@/state/selectors'
 import { useAppStore } from '@/state/store'
 import { Button } from '@/ui/Button'
 
+import { AlertsSection } from './AlertsSection'
 import { FreshnessNotice } from './Freshness'
 import { RecommendationHero } from './RecommendationHero'
 import { RouteCard } from './RouteCard'
@@ -27,6 +28,7 @@ export function ResultsPanel({ onRefresh, refreshing, refreshError }: ResultsPan
   if (!scored) return null
 
   const { plan } = scored
+  const selectedRoute = scored.routes.find((r) => r.route.id === selectedRouteId)
 
   return (
     <div className={styles.panel}>
@@ -92,6 +94,8 @@ export function ResultsPanel({ onRefresh, refreshing, refreshError }: ResultsPan
           ))}
         </ul>
       )}
+
+      {selectedRoute && <AlertsSection route={selectedRoute.route} />}
 
       <section aria-labelledby="routes-title" className={styles.routes}>
         <h2 id="routes-title" className="label">

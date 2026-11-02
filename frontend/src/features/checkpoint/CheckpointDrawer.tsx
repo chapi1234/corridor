@@ -1,4 +1,6 @@
-import { ChevronLeft, ChevronRight, Clock, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Siren, X } from 'lucide-react'
+
+import { alertsAtMile, alertTiming } from '@/domain/alerts'
 
 import { formatDuration, formatLocal } from '@/domain/format'
 import { FACTOR_LABEL, LEVEL_META, LOAD_RULE_TEXT } from '@/domain/levels'
@@ -61,6 +63,15 @@ export function CheckpointDrawer() {
             : 'No forecast covers this ETA. These miles count as unknown, not as safe.'}
         </span>
       </div>
+
+      {alertsAtMile(route.route, checkpoint.mile).map((alert) => (
+        <p key={alert.id} className={styles.nws} data-active={alert.in_effect}>
+          <Siren size={12} aria-hidden />
+          <span>
+            <strong>{alert.event}</strong> · {alertTiming(alert)}
+          </span>
+        </p>
+      ))}
 
       <div className={styles.body}>
         {weather && risk && (

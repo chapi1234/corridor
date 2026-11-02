@@ -97,6 +97,11 @@ def test_plan_is_cached_by_inputs(client: APIClient, monkeypatch: pytest.MonkeyP
     assert calls == 2
 
 
+def test_routes_include_an_alerts_list(client: APIClient) -> None:
+    body = post_plan(client).json()
+    assert all(route["alerts"] == [] for route in body["routes"])
+
+
 def test_shared_plan_resolves_to_the_computed_snapshot(client: APIClient) -> None:
     plan = post_plan(client).json()
     cache.delete(f"plan:v1:{plan['plan_id']}")  # the 10-minute plan cache has expired

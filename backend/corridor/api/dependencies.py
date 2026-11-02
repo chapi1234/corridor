@@ -14,8 +14,13 @@ import httpx
 from django.conf import settings
 from django.core.cache import cache
 
-from corridor.integrations.cache import CachedGeocoder, CachedWeatherProvider
+from corridor.integrations.cache import (
+    CachedAlertsProvider,
+    CachedGeocoder,
+    CachedWeatherProvider,
+)
 from corridor.integrations.http import DEFAULT_TIMEOUT
+from corridor.integrations.nws import NwsAlertsClient
 from corridor.integrations.openmeteo import OpenMeteoClient
 from corridor.integrations.osrm import OsrmClient
 from corridor.integrations.photon import PhotonClient
@@ -47,7 +52,8 @@ async def planning_service() -> AsyncIterator[PlanningService]:
             ),
             cache,
         )
-        yield PlanningService(routing, weather, timezone_at=timezone_at)
+        alerts = CachedAlertsProvider(NwsAlertsClient(http, base_url=settings.NWS_BASE_URL), cache)
+        yield PlanningService(routing, weather, alerts=alerts, timezone_at=timezone_at)
 
 
 @asynccontextmanager

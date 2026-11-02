@@ -111,3 +111,28 @@
     max-height: 70%;
   }
 }
+
+.nws {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--line-1);
+  background: color-mix(in srgb, var(--nws) 9%, transparent);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.nws svg {
+  flex: none;
+  color: var(--nws);
+}
+
+.nws strong {
+  color: var(--text-1);
+}
+
+.nws[data-active='false'] {
+  background: transparent;
+}
