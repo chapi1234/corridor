@@ -31,7 +31,10 @@ HOURLY_VARIABLES: Final = (
     "snowfall",
     "temperature_2m",
     "weather_code",
+    "wind_direction_10m",
+    "visibility",
 )
+"""Kept at 10 or fewer: Open-Meteo bills extra calls for requests with more variables."""
 
 _TO_MPH: Final[Mapping[str, float]] = {
     "mp/h": 1.0,
@@ -41,6 +44,7 @@ _TO_MPH: Final[Mapping[str, float]] = {
     "kn": 1.150779,
 }
 _TO_INCHES: Final[Mapping[str, float]] = {"inch": 1.0, "in": 1.0, "mm": 1 / 25.4, "cm": 1 / 2.54}
+_TO_MILES: Final[Mapping[str, float]] = {"ft": 1 / 5280, "m": 1 / 1609.344, "km": 0.621371}
 _TO_FAHRENHEIT: Final[Mapping[str, Callable[[float], float]]] = {
     "°F": lambda f: f,
     "°C": lambda c: c * 9 / 5 + 32,
@@ -154,7 +158,21 @@ def parse_series(payload: Mapping[str, Any]) -> HourlySeries:
         weather_code=tuple(
             UNKNOWN_WEATHER_CODE if v is None else int(v) for v in hourly["weather_code"]
         ),
+        wind_direction_deg=scaled("wind_direction_10m", 1.0)
+        if "wind_direction_10m" in hourly
+        else (),
+        visibility_mi=_optional_visibility(hourly, units),
     )
+
+
+def _optional_visibility(
+    hourly: Mapping[str, list[Any]], units: Mapping[str, str]
+) -> tuple[float, ...]:
+    """Visibility is advisory: an unknown unit drops it rather than failing the forecast."""
+    factor = _TO_MILES.get(units.get("visibility", ""))
+    if "visibility" not in hourly or factor is None:
+        return ()
+    return tuple(math.nan if v is None else v * factor for v in hourly["visibility"])
 
 
 def _sum_known(rain: float | None, showers: float | None, rain_k: float, showers_k: float) -> float:

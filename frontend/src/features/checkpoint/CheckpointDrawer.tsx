@@ -1,5 +1,6 @@
-import { ChevronLeft, ChevronRight, Clock, Siren, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Siren, TriangleAlert, X } from 'lucide-react'
 
+import { ADVISORY_LABEL } from '@/domain/advisories'
 import { alertsAtMile, alertTiming } from '@/domain/alerts'
 
 import { formatDuration, formatLocal } from '@/domain/format'
@@ -69,6 +70,15 @@ export function CheckpointDrawer() {
           <Siren size={12} aria-hidden />
           <span>
             <strong>{alert.event}</strong> · {alertTiming(alert)}
+          </span>
+        </p>
+      ))}
+
+      {checkpoint.advisories.map((advisory) => (
+        <p key={advisory.kind} className={styles.nws} data-kind="advisory">
+          <TriangleAlert size={12} aria-hidden />
+          <span>
+            <strong>{ADVISORY_LABEL[advisory.kind]}</strong> · {advisory.message}
           </span>
         </p>
       ))}

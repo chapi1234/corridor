@@ -19,6 +19,9 @@ class WeatherSample:
     snow_in_hr: float
     temperature_f: float
     weather_code: int
+    wind_direction_deg: float = math.nan
+    """Direction the wind blows from, clockwise from north; ``nan`` when not forecast."""
+    visibility_mi: float = math.nan
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +41,9 @@ class HourlySeries:
     snow_in_hr: tuple[float, ...]
     temperature_f: tuple[float, ...]
     weather_code: tuple[int, ...]
+    wind_direction_deg: tuple[float, ...] = ()
+    """Optional, like ``visibility_mi``: empty when the provider does not forecast it."""
+    visibility_mi: tuple[float, ...] = ()
 
     def __post_init__(self) -> None:
         if self.start.tzinfo is None or self.start.utcoffset() != timedelta(0):
@@ -52,6 +58,7 @@ class HourlySeries:
             len(self.temperature_f),
             len(self.weather_code),
         }
+        lengths |= {len(v) for v in (self.wind_direction_deg, self.visibility_mi) if v}
         if len(lengths) != 1:
             raise ValueError("All hourly variables must have the same length")
 
@@ -84,6 +91,11 @@ class HourlySeries:
             snow_in_hr=self.snow_in_hr[hi],
             temperature_f=lerp(self.temperature_f),
             weather_code=self.weather_code[hi],
+            # Angles don't interpolate linearly; take the nearer hour.
+            wind_direction_deg=(
+                self.wind_direction_deg[round(offset_h)] if self.wind_direction_deg else math.nan
+            ),
+            visibility_mi=lerp(self.visibility_mi) if self.visibility_mi else math.nan,
         )
         required = (sample.gust_mph, sample.rain_in_hr, sample.snow_in_hr)
         if any(math.isnan(v) for v in required):

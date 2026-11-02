@@ -7,6 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 from zoneinfo import ZoneInfo
 
+from corridor.domain.advisories import Advisory
 from corridor.domain.alerts import WeatherAlert
 from corridor.domain.geometry import LatLon
 from corridor.domain.hos import RestKind
@@ -55,6 +56,8 @@ class Checkpoint:
     classification: Classification | None
     """``None`` when the ETA is outside the forecast (D19)."""
     hourly: HourlyWindow | None
+    advisories: tuple[Advisory, ...] = ()
+    """Crosswind, ice and visibility hazards the risk table does not score."""
 
 
 @dataclass(frozen=True, slots=True)

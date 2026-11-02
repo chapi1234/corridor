@@ -12,6 +12,7 @@ from typing import Any
 
 from rest_framework import serializers
 
+from corridor.domain.advisories import AdvisoryKind
 from corridor.domain.alerts import AlertCategory, AlertSeverity
 from corridor.domain.geometry import LatLon
 from corridor.domain.hos import RestKind
@@ -116,6 +117,10 @@ class WeatherSerializer(serializers.Serializer[None]):
     snow_in_hr = serializers.FloatField()
     temperature_f = serializers.FloatField()
     weather_code = serializers.IntegerField()
+    wind_direction_deg = serializers.FloatField(
+        allow_null=True, help_text="Direction the wind blows from, clockwise from north."
+    )
+    visibility_mi = serializers.FloatField(allow_null=True)
 
 
 class FactorLevelsSerializer(serializers.Serializer[None]):
@@ -139,6 +144,11 @@ class HourlyWindowSerializer(serializers.Serializer[None]):
     snow_in_hr = serializers.ListField(child=serializers.FloatField(allow_null=True))
 
 
+class AdvisorySerializer(serializers.Serializer[None]):
+    kind = serializers.ChoiceField(choices=_choices(AdvisoryKind))
+    message = serializers.CharField()
+
+
 class CheckpointSerializer(serializers.Serializer[None]):
     index = serializers.IntegerField()
     mile = serializers.FloatField()
@@ -152,6 +162,7 @@ class CheckpointSerializer(serializers.Serializer[None]):
     weather = WeatherSerializer(allow_null=True)
     risk = RiskSerializer(allow_null=True)
     hourly = HourlyWindowSerializer(allow_null=True)
+    advisories = AdvisorySerializer(many=True)
 
 
 class RouteSummarySerializer(serializers.Serializer[None]):

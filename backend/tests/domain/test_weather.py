@@ -70,3 +70,23 @@ def test_validates_start_and_lengths() -> None:
         HourlySeries(START.replace(minute=5), one, one, one, one, one, (0,))
     with pytest.raises(ValueError, match="same length"):
         HourlySeries(START, one, (1.0, 2.0), one, one, one, (0,))
+
+
+def test_optional_variables_are_nan_when_absent() -> None:
+    sample = series().at(START)
+    assert sample is not None
+    assert math.isnan(sample.wind_direction_deg)
+    assert math.isnan(sample.visibility_mi)
+
+
+def test_wind_direction_takes_the_nearer_hour_and_visibility_interpolates() -> None:
+    s = series(wind_direction_deg=(350.0, 10.0, 20.0), visibility_mi=(1.0, 3.0, 5.0))
+    sample = s.at(START + timedelta(minutes=40))
+    assert sample is not None
+    assert sample.wind_direction_deg == 10.0  # not the 180° a naive average would give
+    assert sample.visibility_mi == pytest.approx(1 + 2 * 40 / 60)
+
+
+def test_optional_variables_must_match_length() -> None:
+    with pytest.raises(ValueError, match="same length"):
+        series(visibility_mi=(1.0,))

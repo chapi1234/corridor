@@ -24,7 +24,9 @@ _OUTSIDE_COVERAGE: Final = frozenset({400, 404})
 
 
 class NwsAlertsClient:
-    def __init__(self, http: httpx.AsyncClient, *, base_url: str, max_concurrency: int = 16) -> None:
+    def __init__(
+        self, http: httpx.AsyncClient, *, base_url: str, max_concurrency: int = 16
+    ) -> None:
         self._http = http
         self._base_url = base_url.rstrip("/")
         self._semaphore = asyncio.Semaphore(max_concurrency)

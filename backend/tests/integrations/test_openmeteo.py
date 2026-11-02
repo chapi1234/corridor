@@ -151,3 +151,23 @@ async def test_retry_after_header_is_reported(client: OpenMeteoClient) -> None:
         await client.hourly_forecast([DENVER], start=START, end=END)
     assert caught.value.retry_after_s == 42
     assert caught.value.partial == {}
+
+
+def test_parses_optional_direction_and_visibility() -> None:
+    payload = copy.deepcopy(load_fixture("open_meteo_two_points.json")[0])
+    payload["hourly_units"] |= {"wind_direction_10m": "°", "visibility": "ft"}
+    payload["hourly"] |= {"wind_direction_10m": [270, None, 90], "visibility": [5280, 2640, None]}
+
+    series = parse_series(payload)
+
+    assert series.wind_direction_deg[0] == 270
+    assert math.isnan(series.wind_direction_deg[1])
+    assert series.visibility_mi[:2] == pytest.approx((1.0, 0.5))
+
+
+def test_unknown_visibility_unit_drops_visibility_only() -> None:
+    payload = copy.deepcopy(load_fixture("open_meteo_two_points.json")[0])
+    payload["hourly_units"]["visibility"] = "furlong"
+    payload["hourly"]["visibility"] = [1, 2, 3]
+
+    assert parse_series(payload).visibility_mi == ()

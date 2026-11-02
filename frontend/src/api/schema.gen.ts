@@ -82,6 +82,17 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Advisory: {
+            kind: components["schemas"]["AdvisoryKindEnum"];
+            message: string;
+        };
+        /**
+         * @description * `crosswind` - crosswind
+         *     * `ice` - ice
+         *     * `visibility` - visibility
+         * @enum {string}
+         */
+        AdvisoryKindEnum: "crosswind" | "ice" | "visibility";
         /**
          * @description * `winter` - winter
          *     * `wind` - wind
@@ -113,6 +124,7 @@ export interface components {
             weather: components["schemas"]["Weather"] | null;
             risk: components["schemas"]["Risk"] | null;
             hourly: components["schemas"]["HourlyWindow"] | null;
+            advisories: components["schemas"]["Advisory"][];
         };
         /**
          * @description * `fewer_routes` - fewer_routes
@@ -183,12 +195,6 @@ export interface components {
          * @enum {integer}
          */
         IntervalMiEnum: 10 | 25 | 50;
-        /**
-         * @description * `break` - break
-         *     * `reset` - reset
-         * @enum {string}
-         */
-        KindEnum: "break" | "reset";
         /**
          * @description * `wind_45_54_over_30k_lb` - wind_45_54_over_30k_lb
          *     * `wind_35_44_over_40k_lb` - wind_35_44_over_40k_lb
@@ -276,7 +282,7 @@ export interface components {
             no_safe_route: boolean;
         };
         RestStop: {
-            kind: components["schemas"]["KindEnum"];
+            kind: components["schemas"]["RestStopKindEnum"];
             start: components["schemas"]["LocalTime"];
             /** @description Seconds after departure when the rest begins. */
             start_s: number;
@@ -288,6 +294,12 @@ export interface components {
             /** Format: double */
             lon: number;
         };
+        /**
+         * @description * `break` - break
+         *     * `reset` - reset
+         * @enum {string}
+         */
+        RestStopKindEnum: "break" | "reset";
         ReverseResponse: {
             label: string | null;
         };
@@ -387,6 +399,13 @@ export interface components {
             /** Format: double */
             temperature_f: number;
             weather_code: number;
+            /**
+             * Format: double
+             * @description Direction the wind blows from, clockwise from north.
+             */
+            wind_direction_deg: number | null;
+            /** Format: double */
+            visibility_mi: number | null;
         };
     };
     responses: never;

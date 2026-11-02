@@ -82,6 +82,8 @@ class FakeWeather:
     """Locations requested per call."""
     rate_limit_on_call: int | None = None
     """Zero-based call that answers only half its locations, then reports HTTP 429."""
+    wind_from_deg: float | None = None
+    """Constant wind direction; ``None`` leaves direction unforecast."""
 
     async def hourly_forecast(
         self, points: Sequence[LatLon], *, start: datetime, end: datetime
@@ -109,6 +111,11 @@ class FakeWeather:
                 snow_in_hr=tuple(v[2] for v in values),
                 temperature_f=tuple(40.0 for _ in values),
                 weather_code=tuple(0 for _ in values),
+                wind_direction_deg=(
+                    tuple(self.wind_from_deg for _ in values)
+                    if self.wind_from_deg is not None
+                    else ()
+                ),
             )
         return result
 

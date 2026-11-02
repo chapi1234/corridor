@@ -25,6 +25,8 @@ REVERSE_TTL_S: Final = 7 * 24 * 60 * 60
 ALERTS_TTL_S: Final = 5 * 60
 """NWS updates alerts continuously; a short TTL only absorbs repeated plans."""
 _KEY_VERSION: Final = "v1"
+_WEATHER_KEY_VERSION: Final = "v2"
+"""Bumped when ``HourlySeries`` gains fields, so stale pickles are never read."""
 
 
 class CachedWeatherProvider:
@@ -112,6 +114,6 @@ class CachedGeocoder:
 def _weather_key(point: LatLon, start: datetime, end: datetime) -> str:
     fmt = "%Y%m%d%H"
     return (
-        f"wx:{_KEY_VERSION}:{point.lat:.4f},{point.lon:.4f}:"
+        f"wx:{_WEATHER_KEY_VERSION}:{point.lat:.4f},{point.lon:.4f}:"
         f"{start.astimezone(UTC).strftime(fmt)}:{end.astimezone(UTC).strftime(fmt)}"
     )

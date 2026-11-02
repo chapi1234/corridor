@@ -136,3 +136,11 @@
 .nws[data-active='false'] {
   background: transparent;
 }
+
+.nws[data-kind='advisory'] {
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+}
+
+.nws[data-kind='advisory'] svg {
+  color: var(--warning);
+}

@@ -31,6 +31,15 @@ def haversine_m(a: LatLon, b: LatLon) -> float:
     return 2 * EARTH_RADIUS_M * math.asin(min(1.0, math.sqrt(h)))
 
 
+def bearing_deg(a: LatLon, b: LatLon) -> float:
+    """Initial great-circle bearing from ``a`` to ``b``, clockwise from north in [0, 360)."""
+    lat1, lat2 = math.radians(a.lat), math.radians(b.lat)
+    dlon = math.radians(b.lon - a.lon)
+    x = math.sin(dlon) * math.cos(lat2)
+    y = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+    return math.degrees(math.atan2(x, y)) % 360
+
+
 class Polyline:
     """An ordered path with precomputed cumulative distances.
 

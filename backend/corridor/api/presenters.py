@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from datetime import UTC, datetime
 from typing import Any, Final
 from zoneinfo import ZoneInfo
@@ -170,6 +171,7 @@ def _checkpoint(checkpoint: Checkpoint) -> dict[str, Any]:
         "weather": _weather(checkpoint.weather) if checkpoint.weather else None,
         "risk": _risk(checkpoint.classification) if checkpoint.classification else None,
         "hourly": _hourly(checkpoint.hourly) if checkpoint.hourly else None,
+        "advisories": [{"kind": a.kind.value, "message": a.message} for a in checkpoint.advisories],
     }
 
 
@@ -181,7 +183,13 @@ def _weather(sample: WeatherSample) -> dict[str, Any]:
         "snow_in_hr": round(sample.snow_in_hr, 2),
         "temperature_f": round(sample.temperature_f, 1),
         "weather_code": sample.weather_code,
+        "wind_direction_deg": _maybe(sample.wind_direction_deg, 0),
+        "visibility_mi": _maybe(sample.visibility_mi, 2),
     }
+
+
+def _maybe(value: float, digits: int) -> float | None:
+    return None if math.isnan(value) else round(value, digits)
 
 
 def _risk(classification: Classification) -> dict[str, Any]:

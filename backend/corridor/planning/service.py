@@ -12,8 +12,9 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from corridor.domain.advisories import advisories
 from corridor.domain.alerts import WeatherAlert, alert_spans
-from corridor.domain.geometry import LatLon, Polyline
+from corridor.domain.geometry import LatLon, Polyline, bearing_deg
 from corridor.domain.hos import DutySchedule
 from corridor.domain.models import RouteCandidate
 from corridor.domain.ranking import RiskSegment, assign_tags, rank, summarize
@@ -405,6 +406,11 @@ class PlanningService:
                         weather=sample,
                         classification=classify(sample, load_lb) if sample else None,
                         hourly=self._hourly_window(series, eta) if series else None,
+                        advisories=(
+                            advisories(sample, _heading(timing.polyline, position.distance_m))
+                            if sample
+                            else ()
+                        ),
                     )
                 )
             risk = summarize(
@@ -492,6 +498,14 @@ class PlanningService:
 
 
 _AlertSamples = list[tuple[float, tuple[WeatherAlert, ...]]]
+_HEADING_HALF_SPAN_M = 1_000
+
+
+def _heading(polyline: Polyline, distance_m: float) -> float:
+    """Direction of travel around ``distance_m``, smoothed over ~2 km of road."""
+    behind = polyline.point_at(max(distance_m - _HEADING_HALF_SPAN_M, 0))
+    ahead = polyline.point_at(min(distance_m + _HEADING_HALF_SPAN_M, polyline.total_m))
+    return bearing_deg(behind, ahead)
 
 
 def _frange(start: float, stop: float, step: float) -> Iterator[float]:

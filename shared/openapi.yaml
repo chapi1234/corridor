@@ -112,6 +112,26 @@ paths:
           description: ''
 components:
   schemas:
+    Advisory:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/AdvisoryKindEnum'
+        message:
+          type: string
+      required:
+      - kind
+      - message
+    AdvisoryKindEnum:
+      enum:
+      - crosswind
+      - ice
+      - visibility
+      type: string
+      description: |-
+        * `crosswind` - crosswind
+        * `ice` - ice
+        * `visibility` - visibility
     CategoryEnum:
       enum:
       - winter
@@ -172,7 +192,12 @@ components:
           allOf:
           - $ref: '#/components/schemas/HourlyWindow'
           nullable: true
+        advisories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Advisory'
       required:
+      - advisories
       - driving_s
       - elapsed_s
       - eta
@@ -359,14 +384,6 @@ components:
         * `10` - 10
         * `25` - 25
         * `50` - 50
-    KindEnum:
-      enum:
-      - break
-      - reset
-      type: string
-      description: |-
-        * `break` - break
-        * `reset` - reset
     LoadRuleEnum:
       enum:
       - wind_45_54_over_30k_lb
@@ -598,7 +615,7 @@ components:
       type: object
       properties:
         kind:
-          $ref: '#/components/schemas/KindEnum'
+          $ref: '#/components/schemas/RestStopKindEnum'
         start:
           $ref: '#/components/schemas/LocalTime'
         start_s:
@@ -623,6 +640,14 @@ components:
       - mile
       - start
       - start_s
+    RestStopKindEnum:
+      enum:
+      - break
+      - reset
+      type: string
+      description: |-
+        * `break` - break
+        * `reset` - reset
     ReverseResponse:
       type: object
       properties:
@@ -868,10 +893,21 @@ components:
           format: double
         weather_code:
           type: integer
+        wind_direction_deg:
+          type: number
+          format: double
+          nullable: true
+          description: Direction the wind blows from, clockwise from north.
+        visibility_mi:
+          type: number
+          format: double
+          nullable: true
       required:
       - gust_mph
       - rain_in_hr
       - snow_in_hr
       - temperature_f
+      - visibility_mi
       - weather_code
+      - wind_direction_deg
       - wind_mph

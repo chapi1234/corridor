@@ -6,11 +6,24 @@
 }
 
 .section h2 {
+  margin: 0;
+}
+
+.group {
   display: flex;
   gap: var(--space-1);
   align-items: center;
-  margin: 0;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.group[data-kind='nws'] {
   color: var(--nws);
+}
+
+.group[data-kind='advisory'] {
+  color: var(--warning);
 }
 
 .list {
@@ -21,18 +34,24 @@
   list-style: none;
 }
 
-.alert {
+.item {
+  --tone: var(--nws);
+
   display: grid;
   gap: 2px;
   padding: var(--space-2) var(--space-3);
-  border-left: 3px solid var(--nws);
+  border-left: 3px solid var(--tone);
   border-radius: 2px;
-  background: color-mix(in srgb, var(--nws) 9%, transparent);
+  background: color-mix(in srgb, var(--tone) 9%, transparent);
   font-size: var(--text-xs);
 }
 
-.alert[data-active='false'] {
-  border-left-color: var(--line-2, var(--line-1));
+.item[data-kind='advisory'] {
+  --tone: var(--warning);
+}
+
+.item[data-active='false'] {
+  border-left-color: var(--line-2);
   background: transparent;
   opacity: 0.75;
 }

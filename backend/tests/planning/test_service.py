@@ -255,3 +255,18 @@ async def test_alert_locations_fit_the_budget() -> None:
 
     assert len(unbounded.requested) > 60
     assert 0 < len(bounded.requested) <= 60
+
+
+def gusty(_: LatLon, __: datetime) -> tuple[float, float, float]:
+    return 34.0, 0.0, 0.0
+
+
+@pytest.mark.parametrize(("wind_from", "advised"), [(0.0, True), (270.0, False)])
+async def test_crosswind_advisory_depends_on_heading(wind_from: float, advised: bool) -> None:
+    # Denver to Kansas City runs roughly east: a north wind is broadside, a west wind behind.
+    provider = FakeWeather(gusty, wind_from_deg=wind_from)
+    plan = await make_service(weather_provider=provider).build(REQUEST)
+
+    direct = next(r for r in plan.routes if r.candidate.source == "primary")
+    crosswinds = [c for c in direct.checkpoints if any(a.kind == "crosswind" for a in c.advisories)]
+    assert bool(crosswinds) is advised

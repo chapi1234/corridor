@@ -1,7 +1,8 @@
-import { Siren } from 'lucide-react'
+import { Siren, TriangleAlert } from 'lucide-react'
 import { memo } from 'react'
 
 import type { RestStop } from '@/api/types'
+import { ADVISORY_LABEL, advisoryKinds } from '@/domain/advisories'
 import { activeEvents } from '@/domain/alerts'
 import { formatDuration, formatLocal, formatMiles } from '@/domain/format'
 import { FACTOR_LABEL, TAG_LABEL } from '@/domain/levels'
@@ -30,6 +31,7 @@ export const RouteCard = memo(function RouteCard({ scored, selected }: RouteCard
   const worst = worstCheckpoint(scored)
   const miles = risk.milesByLevel
   const alerts = activeEvents(route)
+  const advisories = advisoryKinds(route)
 
   return (
     <button
@@ -80,6 +82,15 @@ export const RouteCard = memo(function RouteCard({ scored, selected }: RouteCard
           <span>
             NWS: {alerts[0]}
             {alerts.length > 1 && ` +${alerts.length - 1} more`} in effect as you pass
+          </span>
+        </p>
+      )}
+
+      {advisories.length > 0 && (
+        <p className={styles.advisories}>
+          <TriangleAlert size={12} aria-hidden />
+          <span>
+            Advisories: {advisories.map((k) => ADVISORY_LABEL[k].toLowerCase()).join(' · ')}
           </span>
         </p>
       )}
