@@ -168,7 +168,7 @@ cd backend  && uv run pytest && uv run ruff check . && uv run mypy
 cd frontend && pnpm test && pnpm lint && pnpm typecheck && pnpm build
 ```
 
-- **Backend:** 232 tests. Boundary tables and Hypothesis property tests for the domain,
+- **Backend:** 231 tests. Boundary tables and Hypothesis property tests for the domain,
   recorded provider payloads (respx) for integrations, and an API contract test that checks
   responses against the OpenAPI schema.
 - **Frontend:** 116 Vitest tests for the risk/ranking mirror (shared parity cases), geometry,
