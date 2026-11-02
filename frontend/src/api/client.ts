@@ -75,4 +75,9 @@ export const api = {
     const data = await request<{ label: string | null }>(`/api/v1/reverse?${params}`, { signal })
     return data.label
   },
+
+  /** Fire-and-forget request that starts a sleeping free-tier backend while the user types. */
+  wake(): void {
+    fetch(`${BASE_URL}/api/v1/health`).catch(() => undefined)
+  },
 }

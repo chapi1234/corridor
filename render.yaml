@@ -1,0 +1,34 @@
+# Render Blueprint: free backend + free Key Value (Redis). New → Blueprint → pick this repo.
+services:
+  - type: web
+    name: corridor-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      # The Vercel URL, e.g. https://corridor.vercel.app (set after the frontend exists).
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: corridor-cache
+          property: connectionString
+      # Two uvicorn workers fit in the free 512 MB; Redis keeps share links visible to both.
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: OPEN_METEO_API_KEY
+        sync: false
+      - key: TOMTOM_API_KEY
+        sync: false
+
+  - type: keyvalue
+    name: corridor-cache
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []

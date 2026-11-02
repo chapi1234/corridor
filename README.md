@@ -84,6 +84,27 @@ truck-legal and use the truck's gross weight (load + 35,000 lb tare).
 | `REDIS_URL` | Shared cache in production (LocMem otherwise) |
 | `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS` | Django deployment |
 | `VITE_API_BASE_URL` | Frontend build: API origin when not served same-origin |
+| `CORS_ALLOWED_ORIGIN_REGEXES` | Extra allowed origins by regex (e.g. Vercel previews) |
+
+## Deploying (free)
+
+Backend on **Render** (free web service + free Key Value), frontend on **Vercel** (free).
+Push the repo to GitHub first.
+
+1. **Backend.** Render → *New* → *Blueprint* → pick the repo. `render.yaml` creates
+   `corridor-api` (Docker, `backend/`) and `corridor-cache` (Redis). Leave
+   `CORS_ALLOWED_ORIGINS` blank for now. When it is live,
+   `https://corridor-api.onrender.com/api/v1/health` returns `{"status":"ok"}`.
+2. **Frontend.** Vercel → *Add New Project* → the repo, **Root Directory `frontend`**,
+   environment variable `VITE_API_BASE_URL=https://corridor-api.onrender.com`
+   (your Render URL, no trailing slash). `vercel.json` handles the rest.
+3. **Connect them.** In Render set `CORS_ALLOWED_ORIGINS` to the Vercel URL
+   (e.g. `https://corridor.vercel.app`) and save; it redeploys.
+
+Free Render services sleep after 15 minutes idle and take about a minute to wake. The page
+pings the backend as soon as it loads, so it is usually awake by the time a trip is
+submitted. To keep it always warm, point a free uptime pinger (e.g. cron-job.org) at
+`/api/v1/health` every 10 minutes; one service running all month fits the free hours.
 
 ---
 

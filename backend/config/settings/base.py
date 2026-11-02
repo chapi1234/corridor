@@ -12,6 +12,9 @@ environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="insecure-dev-key-change-me")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+# Render sets the service's public hostname; trust it without repeating it by hand.
+if RENDER_HOST := env("RENDER_EXTERNAL_HOSTNAME", default=""):
+    ALLOWED_HOSTS.append(RENDER_HOST)
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
@@ -30,6 +33,15 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "config.urls"
+
+# Only for the Swagger UI page at /api/docs; its assets load from a CDN.
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "APP_DIRS": True,
+        "OPTIONS": {"context_processors": ["django.template.context_processors.request"]},
+    }
+]
 ASGI_APPLICATION = "config.asgi.application"
 
 # The API is stateless: no models, sessions or admin.
@@ -40,6 +52,8 @@ TIME_ZONE = "UTC"
 USE_TZ = True
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:5173"])
+# e.g. ^https://corridor-[a-z0-9-]+\.vercel\.app$ for Vercel preview deployments.
+CORS_ALLOWED_ORIGIN_REGEXES = env.list("CORS_ALLOWED_ORIGIN_REGEXES", default=[])
 
 CACHES = {
     "default": {

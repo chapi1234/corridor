@@ -276,3 +276,4 @@ def test_timezone_rejects_bad_coordinates(client: APIClient) -> None:
 def test_health_and_schema(client: APIClient) -> None:
     assert client.get("/api/v1/health").json()["status"] == "ok"
     assert client.get("/api/v1/schema").status_code == 200
+    assert client.get("/api/docs").status_code == 200
