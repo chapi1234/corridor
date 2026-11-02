@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 from corridor.domain.advisories import Advisory
 from corridor.domain.alerts import WeatherAlert
+from corridor.domain.departure import DepartureOption, DepartureSuggestion
 from corridor.domain.geometry import LatLon
 from corridor.domain.hos import RestKind
 from corridor.domain.models import Place, RouteCandidate
@@ -148,4 +149,6 @@ class Plan:
     heatmap: HeatmapFrames
     routing_source: str = ""
     warnings: tuple[PlanWarning, ...] = ()
+    departure_options: tuple[DepartureOption, ...] = ()
+    departure_suggestion: DepartureSuggestion | None = None
     timings_ms: dict[str, int] = field(default_factory=dict)

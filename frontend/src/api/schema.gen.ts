@@ -143,7 +143,39 @@ export interface components {
          *     * `duration` - duration
          * @enum {string}
          */
+        CriterionEnum: "no_travel_miles" | "severe_miles" | "high_miles" | "average_risk" | "duration";
+        /**
+         * @description * `no_travel_miles` - no_travel_miles
+         *     * `severe_miles` - severe_miles
+         *     * `high_miles` - high_miles
+         *     * `average_risk` - average_risk
+         *     * `duration` - duration
+         * @enum {string}
+         */
         DecidingCriterionEnum: "no_travel_miles" | "severe_miles" | "high_miles" | "average_risk" | "duration";
+        DepartureAdvice: {
+            options: components["schemas"]["DepartureOption"][];
+            suggestion: components["schemas"]["DepartureSuggestion"] | null;
+        };
+        DepartureOption: {
+            /** @description Hours relative to the requested departure. */
+            offset_h: number;
+            departure: components["schemas"]["LocalTime"];
+            /** @description The route recommended for this departure. */
+            route_id: string;
+            miles_by_level: number[];
+            /** Format: double */
+            unknown_miles: number;
+            /** Format: double */
+            average_risk: number | null;
+            duration_s: number;
+        };
+        DepartureSuggestion: {
+            offset_h: number;
+            criterion: components["schemas"]["CriterionEnum"];
+            /** @description Fewer miles on ``criterion`` than the requested departure's best route. */
+            gain_mi: number;
+        };
         /**
          * @description * `wind` - wind
          *     * `rain` - rain
@@ -264,6 +296,8 @@ export interface components {
             recommendation: components["schemas"]["Recommendation"];
             heatmap: components["schemas"]["Heatmap"];
             warnings: components["schemas"]["Warning"][];
+            /** @description The same routes re-scored for nearby departures, computed at the request load. */
+            departure_advice: components["schemas"]["DepartureAdvice"];
             meta: components["schemas"]["Meta"];
         };
         Recommendation: {

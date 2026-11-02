@@ -47,6 +47,9 @@ class PlanningConfig:
     checkpoint_window_hours: int = 6
     """Hours of forecast either side of each checkpoint ETA returned for the detail chart."""
 
+    departure_offsets_h: tuple[int, ...] = (-12, -9, -6, -3, 0, 3, 6, 9, 12, 15, 18, 21, 24)
+    """Departures the advisor re-scores, relative to the requested one (past ones skipped)."""
+
     departure_grace: timedelta = timedelta(minutes=5)
     max_departure_ahead: timedelta = timedelta(days=10)
     forecast_horizon: timedelta = timedelta(days=15)

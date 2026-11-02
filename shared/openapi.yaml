@@ -224,6 +224,20 @@ components:
         * `shared_forecasts` - shared_forecasts
         * `heatmap_incomplete` - heatmap_incomplete
         * `alerts_unavailable` - alerts_unavailable
+    CriterionEnum:
+      enum:
+      - no_travel_miles
+      - severe_miles
+      - high_miles
+      - average_risk
+      - duration
+      type: string
+      description: |-
+        * `no_travel_miles` - no_travel_miles
+        * `severe_miles` - severe_miles
+        * `high_miles` - high_miles
+        * `average_risk` - average_risk
+        * `duration` - duration
     DecidingCriterionEnum:
       enum:
       - no_travel_miles
@@ -238,6 +252,70 @@ components:
         * `high_miles` - high_miles
         * `average_risk` - average_risk
         * `duration` - duration
+    DepartureAdvice:
+      type: object
+      properties:
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/DepartureOption'
+        suggestion:
+          allOf:
+          - $ref: '#/components/schemas/DepartureSuggestion'
+          nullable: true
+      required:
+      - options
+      - suggestion
+    DepartureOption:
+      type: object
+      properties:
+        offset_h:
+          type: integer
+          description: Hours relative to the requested departure.
+        departure:
+          $ref: '#/components/schemas/LocalTime'
+        route_id:
+          type: string
+          description: The route recommended for this departure.
+        miles_by_level:
+          type: array
+          items:
+            type: number
+            format: double
+          maxItems: 5
+          minItems: 5
+        unknown_miles:
+          type: number
+          format: double
+        average_risk:
+          type: number
+          format: double
+          nullable: true
+        duration_s:
+          type: integer
+      required:
+      - average_risk
+      - departure
+      - duration_s
+      - miles_by_level
+      - offset_h
+      - route_id
+      - unknown_miles
+    DepartureSuggestion:
+      type: object
+      properties:
+        offset_h:
+          type: integer
+        criterion:
+          $ref: '#/components/schemas/CriterionEnum'
+        gain_mi:
+          type: integer
+          description: Fewer miles on ``criterion`` than the requested departure's
+            best route.
+      required:
+      - criterion
+      - gain_mi
+      - offset_h
     DriverEnum:
       enum:
       - wind
@@ -540,10 +618,16 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Warning'
+        departure_advice:
+          allOf:
+          - $ref: '#/components/schemas/DepartureAdvice'
+          description: The same routes re-scored for nearby departures, computed at
+            the request load.
         meta:
           $ref: '#/components/schemas/Meta'
       required:
       - departure
+      - departure_advice
       - generated_at
       - heatmap
       - inputs

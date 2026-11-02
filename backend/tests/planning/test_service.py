@@ -270,3 +270,30 @@ async def test_crosswind_advisory_depends_on_heading(wind_from: float, advised: 
     direct = next(r for r in plan.routes if r.candidate.source == "primary")
     crosswinds = [c for c in direct.checkpoints if any(a.kind == "crosswind" for a in c.advisories)]
     assert bool(crosswinds) is advised
+
+
+def storm_until_evening(point: LatLon, moment: datetime) -> tuple[float, float, float]:
+    """Severe gusts over eastern Colorado until 21:00 UTC, calm afterwards."""
+    if -104.0 <= point.lon <= -102.0 and moment < datetime(2026, 11, 3, 21, tzinfo=UTC):
+        return 48.0, 0.0, 0.0
+    return 12.0, 0.0, 0.0
+
+
+async def test_departure_advisor_suggests_waiting_out_a_storm() -> None:
+    plan = await make_service(storm_until_evening).build(REQUEST)
+
+    offsets = [o.offset_h for o in plan.departure_options]
+    # NOW is 10:00 UTC and the request leaves at 13:00, so only -3 h of the past remains.
+    assert min(offsets) == -3
+    assert max(offsets) == 24
+    current = next(o for o in plan.departure_options if o.offset_h == 0)
+    assert current.ranking.keys == plan.ranking.keys
+    suggestion = plan.departure_suggestion
+    assert suggestion is not None
+    assert suggestion.option.offset_h > 0
+    assert suggestion.criterion is Criterion.SEVERE_MILES
+
+
+async def test_departure_advisor_is_quiet_on_calm_days() -> None:
+    plan = await make_service().build(REQUEST)
+    assert plan.departure_suggestion is None

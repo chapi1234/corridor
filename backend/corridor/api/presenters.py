@@ -85,6 +85,7 @@ def present_plan(plan: Plan) -> dict[str, Any]:
             "missing": MISSING,
         },
         "warnings": [{"code": w.code.value, "message": w.message} for w in plan.warnings],
+        "departure_advice": _departure_advice(plan),
         "meta": {
             "timings_ms": plan.timings_ms,
             "routing_source": plan.routing_source,
@@ -134,6 +135,35 @@ def _rest(rest: PlannedRest) -> dict[str, Any]:
         "mile": round(meters_to_miles(rest.distance_m), 2),
         "lat": round(rest.point.lat, COORD_DECIMALS),
         "lon": round(rest.point.lon, COORD_DECIMALS),
+    }
+
+
+def _departure_advice(plan: Plan) -> dict[str, Any]:
+    suggestion = plan.departure_suggestion
+    return {
+        "options": [
+            {
+                "offset_h": option.offset_h,
+                "departure": _local_time(option.departure, plan.origin_tz),
+                "route_id": option.best.route_id,
+                "miles_by_level": [round(option.best.miles_by_level[lv], 2) for lv in Level],
+                "unknown_miles": round(option.best.unknown_miles, 2),
+                "average_risk": (
+                    None if option.best.average_risk is None else round(option.best.average_risk, 3)
+                ),
+                "duration_s": round(option.best.duration_s),
+            }
+            for option in plan.departure_options
+        ],
+        "suggestion": (
+            {
+                "offset_h": suggestion.option.offset_h,
+                "criterion": suggestion.criterion.slug,
+                "gain_mi": suggestion.gain_mi,
+            }
+            if suggestion
+            else None
+        ),
     }
 
 

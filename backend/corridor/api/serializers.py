@@ -277,6 +277,31 @@ class MetaSerializer(serializers.Serializer[None]):
     weather_source = serializers.CharField()
 
 
+class DepartureOptionSerializer(serializers.Serializer[None]):
+    offset_h = serializers.IntegerField(help_text="Hours relative to the requested departure.")
+    departure = LocalTimeSerializer()
+    route_id = serializers.CharField(help_text="The route recommended for this departure.")
+    miles_by_level = serializers.ListField(
+        child=serializers.FloatField(), min_length=5, max_length=5
+    )
+    unknown_miles = serializers.FloatField()
+    average_risk = serializers.FloatField(allow_null=True)
+    duration_s = serializers.IntegerField()
+
+
+class DepartureSuggestionSerializer(serializers.Serializer[None]):
+    offset_h = serializers.IntegerField()
+    criterion = serializers.ChoiceField(choices=[c.slug for c in Criterion])
+    gain_mi = serializers.IntegerField(
+        help_text="Fewer miles on ``criterion`` than the requested departure's best route."
+    )
+
+
+class DepartureAdviceSerializer(serializers.Serializer[None]):
+    options = DepartureOptionSerializer(many=True)
+    suggestion = DepartureSuggestionSerializer(allow_null=True)
+
+
 class PlanResponseSerializer(serializers.Serializer[None]):
     plan_id = serializers.CharField()
     generated_at = serializers.CharField()
@@ -286,4 +311,7 @@ class PlanResponseSerializer(serializers.Serializer[None]):
     recommendation = RecommendationSerializer()
     heatmap = HeatmapSerializer()
     warnings = WarningSerializer(many=True)
+    departure_advice = DepartureAdviceSerializer(
+        help_text="The same routes re-scored for nearby departures, computed at the request load."
+    )
     meta = MetaSerializer()

@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 
 from corridor.domain.advisories import advisories
 from corridor.domain.alerts import WeatherAlert, alert_spans
+from corridor.domain.departure import DepartureOption, suggest
 from corridor.domain.geometry import LatLon, Polyline, bearing_deg
 from corridor.domain.hos import DutySchedule
 from corridor.domain.models import RouteCandidate
@@ -127,13 +128,15 @@ class PlanningService:
             )
 
         base_time = floor_hour(departure)
+        offsets = self._departure_offsets(departure, now)
         last_eta = departure + timedelta(seconds=max(t.trip_s for t in timings_by_route))
         window = timedelta(hours=self._config.checkpoint_window_hours)
-        start = base_time - window
+        # One series per location covers the plan and every advisor departure.
+        start = base_time + timedelta(hours=min(offsets)) - window
         end = min(
             max(
                 base_time + timedelta(hours=self._config.heatmap_hours - 1),
-                ceil_hour(last_eta) + window,
+                ceil_hour(last_eta) + timedelta(hours=max(offsets)) + window,
             ),
             floor_hour(now) + self._config.forecast_horizon,
         )
@@ -166,6 +169,9 @@ class PlanningService:
                 )
                 for r, timing, samples in zip(routes, timings_by_route, alert_samples, strict=True)
             ]
+            options = self._departure_options(
+                routes, forecasts, departure, request.load_lb, offsets
+            )
             grid_step = self._config.weather_grid_deg
             heatmap = build_frames(
                 grid.points,
@@ -197,6 +203,8 @@ class PlanningService:
                     alerts_complete=alerts_complete,
                 )
             ),
+            departure_options=options,
+            departure_suggestion=suggest(options),
             timings_ms=timings,
         )
 
@@ -254,6 +262,46 @@ class PlanningService:
             for result in await asyncio.gather(*(fetch_via(v) for v in far_vias)):
                 distinct.offer_all(result)
         return distinct.routes[:target]
+
+    def _departure_offsets(self, departure: datetime, now: datetime) -> tuple[int, ...]:
+        earliest = now - self._config.departure_grace
+        latest = now + self._config.max_departure_ahead
+        return tuple(
+            h
+            for h in self._config.departure_offsets_h
+            if h == 0 or earliest <= departure + timedelta(hours=h) <= latest
+        )
+
+    def _departure_options(
+        self,
+        routes: Sequence[PlannedRoute],
+        forecasts: Mapping[LatLon, HourlySeries],
+        departure: datetime,
+        load_lb: float,
+        offsets: Sequence[int],
+    ) -> tuple[DepartureOption, ...]:
+        """Re-score the same routes with every ETA shifted by each departure offset."""
+        options = []
+        for offset_h in offsets:
+            leave = departure + timedelta(hours=offset_h)
+            risks = []
+            for route in routes:
+                segments = []
+                for c in route.checkpoints:
+                    series = forecasts.get(c.weather_point)
+                    sample = series.at(leave + timedelta(seconds=c.trip_s)) if series else None
+                    level = classify(sample, load_lb).level if sample else None
+                    segments.append(RiskSegment(c.position.owned_m, level))
+                risks.append(
+                    summarize(
+                        route.id,
+                        segments,
+                        distance_m=route.candidate.length_m,
+                        duration_s=route.trip_s,
+                    )
+                )
+            options.append(DepartureOption(offset_h, leave, rank(risks), tuple(risks)))
+        return tuple(options)
 
     def _checkpoint_step(self, timings: Sequence[_RouteTiming]) -> float:
         """Finest snapping grid that keeps checkpoint forecasts within the location budget.

@@ -8,6 +8,7 @@ import { useAppStore } from '@/state/store'
 import { Button } from '@/ui/Button'
 
 import { AlertsSection } from './AlertsSection'
+import { DepartureAdvisor } from './DepartureAdvisor'
 import { FreshnessNotice } from './Freshness'
 import { RecommendationHero } from './RecommendationHero'
 import { RouteCard } from './RouteCard'
@@ -58,6 +59,13 @@ export function ResultsPanel({ onRefresh, refreshing, refreshError }: ResultsPan
       />
 
       <RecommendationHero scored={scored} />
+
+      <DepartureAdvisor
+        plan={plan}
+        isWhatIf={scored.isWhatIf}
+        onReplan={onRefresh}
+        replanning={refreshing}
+      />
 
       <section className={styles.whatIf} aria-labelledby="what-if-title">
         <div className={styles.whatIfHeader}>
