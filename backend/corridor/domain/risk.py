@@ -11,7 +11,7 @@ Load rules:  >=55 mph -> No Travel for any load
              45-54 mph and >30,000 lb -> No Travel
              35-44 mph and >40,000 lb -> Severe
 
-Interpretation (see PLAN.md):
+Interpretation:
     D2  Shared band edges belong to the higher band, except the No Travel column,
         which is strict (">"), so rain 1.00 and snow 3.0 are Severe.
     D3  Wind bands are continuous with lower-inclusive edges at 25/35/45/55 mph.

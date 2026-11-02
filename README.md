@@ -168,10 +168,10 @@ cd backend  && uv run pytest && uv run ruff check . && uv run mypy
 cd frontend && pnpm test && pnpm lint && pnpm typecheck && pnpm build
 ```
 
-- **Backend:** 137 tests. Boundary tables and Hypothesis property tests for the domain,
+- **Backend:** 232 tests. Boundary tables and Hypothesis property tests for the domain,
   recorded provider payloads (respx) for integrations, and an API contract test that checks
   responses against the OpenAPI schema.
-- **Frontend:** Vitest for the risk/ranking mirror (shared parity cases), geometry,
+- **Frontend:** 116 Vitest tests for the risk/ranking mirror (shared parity cases), geometry,
   timeline and ribbon layout.
 - **CI** (`.github/workflows/ci.yml`) runs all of the above and fails if the OpenAPI
   schema or the generated TypeScript types are stale.
@@ -180,8 +180,7 @@ cd frontend && pnpm test && pnpm lint && pnpm typecheck && pnpm build
 
 ## Key decisions
 
-The full log, D1–D25, is in [PLAN.md §3](PLAN.md#3-spec-interpretation--decisions-log),
-with implementation changes in [§25](PLAN.md#25-implementation-notes--plan-updates).
+Each interpretation of the brief has an ID (D1–D25) that the code cites where it applies.
 The ones that most affect results:
 
 - **Gusts, not sustained wind**, drive the wind factor — gusts are what tip a high-sided

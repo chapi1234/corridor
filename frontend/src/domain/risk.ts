@@ -1,7 +1,7 @@
 /**
  * Client mirror of backend/corridor/domain/risk.py, used to re-score instantly when the
  * load weight changes. Parity is enforced by shared/risk_cases.json (risk.test.ts).
- * Decision references (D2, D3, ...) point to the decisions log in PLAN.md.
+ * Decision references (D2, D3, ...) are interpretations of the brief; README.md lists the key ones.
  */
 
 import type { Factor, LoadRule } from '@/api/types'
