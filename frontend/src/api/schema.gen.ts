@@ -86,9 +86,11 @@ export interface components {
         /**
          * @description * `fewer_routes` - fewer_routes
          *     * `forecast_unavailable` - forecast_unavailable
+         *     * `shared_forecasts` - shared_forecasts
+         *     * `heatmap_incomplete` - heatmap_incomplete
          * @enum {string}
          */
-        CodeEnum: "fewer_routes" | "forecast_unavailable";
+        CodeEnum: "fewer_routes" | "forecast_unavailable" | "shared_forecasts" | "heatmap_incomplete";
         /**
          * @description * `no_travel_miles` - no_travel_miles
          *     * `severe_miles` - severe_miles

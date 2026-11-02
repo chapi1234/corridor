@@ -9,6 +9,7 @@ from corridor.domain.models import Place
 from corridor.domain.weather import HourlySeries
 from corridor.integrations.cache import CachedGeocoder, CachedWeatherProvider
 from corridor.integrations.timezones import timezone_at
+from corridor.planning.errors import IncompleteForecastError, UpstreamServiceError
 
 START = datetime(2026, 11, 3, 12, tzinfo=UTC)
 END = START + timedelta(hours=1)
@@ -86,3 +87,28 @@ async def test_geocoder_cache() -> None:
 )
 def test_timezone_at(point: LatLon, zone: str) -> None:
     assert timezone_at(point).key == zone
+
+
+class RateLimitedWeather(CountingWeather):
+    """Serves only the first point of each request, then reports a rate limit."""
+
+    async def hourly_forecast(
+        self, points: Sequence[LatLon], *, start: datetime, end: datetime
+    ) -> dict[LatLon, HourlySeries]:
+        self.requested.append(list(points))
+        cause = UpstreamServiceError("open-meteo", "HTTP 429", status=429)
+        raise IncompleteForecastError(cause, {points[0]: series()})
+
+
+async def test_weather_cache_keeps_partial_results_for_the_retry() -> None:
+    a, b = LatLon(39, -105), LatLon(40, -100)
+
+    with pytest.raises(IncompleteForecastError):
+        await CachedWeatherProvider(RateLimitedWeather(), cache).hourly_forecast(
+            [a, b], start=START, end=END
+        )
+    inner = CountingWeather()
+    result = await CachedWeatherProvider(inner, cache).hourly_forecast([a, b], start=START, end=END)
+
+    assert inner.requested == [[b]]
+    assert set(result) == {a, b}

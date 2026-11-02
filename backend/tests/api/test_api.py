@@ -126,6 +126,27 @@ def test_domain_validation_maps_to_422(client: APIClient) -> None:
     assert response.json()["errors"] == {"departure": ["Departure time is in the past."]}
 
 
+def test_upstream_rate_limit_maps_to_503_with_retry_after(
+    client: APIClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class RateLimitedService:
+        async def build(self, _: Any) -> None:
+            raise UpstreamServiceError("open-meteo", "HTTP 429", status=429)
+
+    @asynccontextmanager
+    async def limited() -> AsyncIterator[Any]:
+        yield RateLimitedService()
+
+    monkeypatch.setattr(dependencies, "planning_service", limited)
+    response = post_plan(client)
+
+    assert response.status_code == 503
+    assert response["Retry-After"] == "60"
+    body = response.json()
+    assert body["type"] == "/problems/upstream-rate-limited"
+    assert body["retry_after_s"] == 60
+
+
 @pytest.mark.parametrize(
     ("error", "status", "kind"),
     [

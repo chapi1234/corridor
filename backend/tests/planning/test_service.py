@@ -6,9 +6,18 @@ import pytest
 from corridor.domain.geometry import LatLon
 from corridor.domain.ranking import Criterion, Tag
 from corridor.domain.risk import Level, LoadRule
-from corridor.planning.errors import InvalidPlanRequestError
+from corridor.planning.config import PlanningConfig
+from corridor.planning.errors import IncompleteForecastError, InvalidPlanRequestError
+from corridor.planning.frames import MISSING
 from corridor.planning.models import PlanRequest, WarningCode
-from tests.fakes import DENVER, KANSAS_CITY, SPEED_MPS, FakeRouting, make_service
+from tests.fakes import (
+    DENVER,
+    KANSAS_CITY,
+    SPEED_MPS,
+    FakeRouting,
+    FakeWeather,
+    make_service,
+)
 
 REQUEST = PlanRequest(
     origin=DENVER,
@@ -163,3 +172,38 @@ async def test_hours_of_service_rest_delays_later_checkpoints() -> None:
         expected = 1800 if after.position.elapsed_s > 8 * 3600 else 0
         assert delay == pytest.approx(expected, abs=1)
         assert after.trip_s == pytest.approx(after.position.elapsed_s + expected, abs=1)
+
+
+async def test_long_trips_share_checkpoint_forecasts_to_fit_the_budget() -> None:
+    provider = FakeWeather()
+    config = PlanningConfig(heatmap_target_points=60, checkpoint_location_budget=80)
+    plan = await make_service(config=config, weather_provider=provider).build(
+        replace(REQUEST, interval_mi=10)
+    )
+
+    assert provider.calls[0] <= 80  # checkpoint locations, fetched first
+    assert all(c.classification is not None for r in plan.routes for c in r.checkpoints)
+    assert WarningCode.SHARED_FORECASTS in {w.code for w in plan.warnings}
+
+
+async def test_short_trips_keep_the_finest_forecast_grid() -> None:
+    plan = await make_service().build(REQUEST)
+    assert WarningCode.SHARED_FORECASTS not in {w.code for w in plan.warnings}
+
+
+async def test_heatmap_degrades_when_the_provider_rate_limits() -> None:
+    provider = FakeWeather(rate_limit_on_call=1)
+    plan = await make_service(weather_provider=provider).build(REQUEST)
+
+    assert all(c.classification is not None for r in plan.routes for c in r.checkpoints)
+    assert WarningCode.HEATMAP_INCOMPLETE in {w.code for w in plan.warnings}
+    first_frame = plan.heatmap.gust_mph_x10[0]
+    assert MISSING in first_frame
+    assert any(value != MISSING for value in first_frame)  # the half that arrived is kept
+
+
+async def test_checkpoint_rate_limit_fails_the_plan() -> None:
+    provider = FakeWeather(rate_limit_on_call=0)
+    with pytest.raises(IncompleteForecastError) as caught:
+        await make_service(weather_provider=provider).build(REQUEST)
+    assert caught.value.rate_limited

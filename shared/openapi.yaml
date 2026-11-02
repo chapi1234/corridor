@@ -148,10 +148,14 @@ components:
       enum:
       - fewer_routes
       - forecast_unavailable
+      - shared_forecasts
+      - heatmap_incomplete
       type: string
       description: |-
         * `fewer_routes` - fewer_routes
         * `forecast_unavailable` - forecast_unavailable
+        * `shared_forecasts` - shared_forecasts
+        * `heatmap_incomplete` - heatmap_incomplete
     DecidingCriterionEnum:
       enum:
       - no_travel_miles

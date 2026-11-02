@@ -6,7 +6,7 @@ this is what keeps us comfortably inside Open-Meteo's per-location rate limits.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Final
 
@@ -15,6 +15,7 @@ from django.core.cache import BaseCache
 from corridor.domain.geometry import LatLon
 from corridor.domain.models import Place
 from corridor.domain.weather import HourlySeries
+from corridor.planning.errors import IncompleteForecastError
 from corridor.planning.ports import Geocoder, WeatherProvider
 
 WEATHER_TTL_S: Final = 30 * 60
@@ -38,12 +39,20 @@ class CachedWeatherProvider:
 
         missing = [point for point in keys if point not in result]
         if missing:
-            fetched = await self._inner.hourly_forecast(missing, start=start, end=end)
-            await self._cache.aset_many(
-                {keys[point]: series for point, series in fetched.items()}, self._ttl_s
-            )
+            try:
+                fetched = await self._inner.hourly_forecast(missing, start=start, end=end)
+            except IncompleteForecastError as exc:
+                await self._store(keys, exc.partial)
+                raise
+            await self._store(keys, fetched)
             result |= fetched
         return result
+
+    async def _store(
+        self, keys: Mapping[LatLon, str], series: Mapping[LatLon, HourlySeries]
+    ) -> None:
+        if series:
+            await self._cache.aset_many({keys[p]: s for p, s in series.items()}, self._ttl_s)
 
 
 class CachedGeocoder:

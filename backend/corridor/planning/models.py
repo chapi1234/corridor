@@ -102,6 +102,8 @@ class HeatmapFrames:
 class WarningCode(StrEnum):
     FEWER_ROUTES = "fewer_routes"
     FORECAST_UNAVAILABLE = "forecast_unavailable"
+    SHARED_FORECASTS = "shared_forecasts"
+    HEATMAP_INCOMPLETE = "heatmap_incomplete"
 
 
 @dataclass(frozen=True, slots=True)

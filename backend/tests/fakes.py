@@ -12,6 +12,7 @@ from corridor.domain.geometry import LatLon, Polyline
 from corridor.domain.models import Place, RouteCandidate
 from corridor.domain.weather import HourlySeries
 from corridor.planning.config import PlanningConfig
+from corridor.planning.errors import IncompleteForecastError, UpstreamServiceError
 from corridor.planning.service import PlanningService
 
 DENVER = Place("Denver, CO", LatLon(39.7392, -104.9903))
@@ -76,11 +77,25 @@ class FakeRouting:
 class FakeWeather:
     weather: WeatherFn = calm
     requested: int = 0
+    calls: list[int] = field(default_factory=list)
+    """Locations requested per call."""
+    rate_limit_on_call: int | None = None
+    """Zero-based call that answers only half its locations, then reports HTTP 429."""
 
     async def hourly_forecast(
         self, points: Sequence[LatLon], *, start: datetime, end: datetime
     ) -> dict[LatLon, HourlySeries]:
         self.requested += len(points)
+        self.calls.append(len(points))
+        if len(self.calls) - 1 == self.rate_limit_on_call:
+            served = await self._series(points[: len(points) // 2], start, end)
+            cause = UpstreamServiceError("open-meteo", "HTTP 429", status=429)
+            raise IncompleteForecastError(cause, served)
+        return await self._series(points, start, end)
+
+    async def _series(
+        self, points: Sequence[LatLon], start: datetime, end: datetime
+    ) -> dict[LatLon, HourlySeries]:
         hours = int((end - start).total_seconds() // 3600) + 1
         result = {}
         for point in points:
@@ -106,10 +121,11 @@ def make_service(
     *,
     routing: FakeRouting | None = None,
     config: PlanningConfig | None = None,
+    weather_provider: FakeWeather | None = None,
 ) -> PlanningService:
     return PlanningService(
         routing or FakeRouting(),
-        FakeWeather(weather),
+        weather_provider or FakeWeather(weather),
         timezone_at=denver_tz,
         clock=lambda: NOW,
         config=config or PlanningConfig(heatmap_target_points=60),

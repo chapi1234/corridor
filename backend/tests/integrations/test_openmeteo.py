@@ -8,7 +8,7 @@ import respx
 
 from corridor.domain.geometry import LatLon
 from corridor.integrations.openmeteo import OpenMeteoClient, parse_series
-from corridor.planning.errors import UpstreamServiceError
+from corridor.planning.errors import IncompleteForecastError, UpstreamServiceError
 from tests.conftest import load_fixture
 
 BASE = "https://open-meteo.test/v1/forecast"
@@ -118,3 +118,36 @@ async def test_count_mismatch_is_an_error() -> None:
         client = OpenMeteoClient(http, base_url=BASE, batch_size=5, backoff_s=0)
         with pytest.raises(UpstreamServiceError, match="mismatch"):
             await client.hourly_forecast([DENVER], start=START, end=END)
+
+
+@respx.mock
+async def test_rate_limit_is_not_retried_and_keeps_successful_batches(
+    client: OpenMeteoClient,
+) -> None:
+    denver, _ = load_fixture("open_meteo_two_points.json")
+    limited = httpx.Response(
+        429, json={"error": True, "reason": "Minutely API request limit exceeded."}
+    )
+    route = respx.get(BASE).mock(
+        side_effect=lambda request: (
+            httpx.Response(200, json=denver)
+            if request.url.params["latitude"] == "39.7400"
+            else limited
+        )
+    )
+
+    with pytest.raises(IncompleteForecastError) as caught:
+        await client.hourly_forecast([DENVER, CHICAGO], start=START, end=END)
+
+    assert route.call_count == 2  # one call per batch: the 429 was not retried
+    assert caught.value.rate_limited
+    assert set(caught.value.partial) == {DENVER}
+
+
+@respx.mock
+async def test_retry_after_header_is_reported(client: OpenMeteoClient) -> None:
+    respx.get(BASE).mock(return_value=httpx.Response(429, headers={"Retry-After": "42"}))
+    with pytest.raises(IncompleteForecastError) as caught:
+        await client.hourly_forecast([DENVER], start=START, end=END)
+    assert caught.value.retry_after_s == 42
+    assert caught.value.partial == {}

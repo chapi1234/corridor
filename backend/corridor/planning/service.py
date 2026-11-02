@@ -6,7 +6,7 @@ import asyncio
 import logging
 import math
 import time
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
@@ -23,8 +23,9 @@ from corridor.domain.units import lb_to_kg, miles_to_meters
 from corridor.domain.weather import HourlySeries
 from corridor.planning.alternatives import DistinctRoutes, via_points
 from corridor.planning.config import DEFAULT_CONFIG, PlanningConfig
-from corridor.planning.corridor import corridor_grid, snap
+from corridor.planning.corridor import CorridorGrid, corridor_grid, snap
 from corridor.planning.errors import (
+    IncompleteForecastError,
     InvalidPlanRequestError,
     RouteNotFoundError,
     UpstreamServiceError,
@@ -106,10 +107,18 @@ class PlanningService:
 
         with _timed(timings, "geometry"):
             timings_by_route = [self._timing(c, request) for c in candidates]
-            positions = [t.positions for t in timings_by_route]
+            step = self._checkpoint_step(timings_by_route)
+            checkpoint_locations = {
+                snap(p.point, step) for t in timings_by_route for p in t.positions
+            }
             projection = LocalProjection([p for c in candidates for p in c.points])
             grid = corridor_grid(
-                [projection.line(c.points) for c in candidates], projection, self._config
+                [projection.line(c.points) for c in candidates],
+                projection,
+                replace(
+                    self._config,
+                    heatmap_target_points=self._grid_budget(len(checkpoint_locations)),
+                ),
             )
 
         base_time = floor_hour(departure)
@@ -124,24 +133,28 @@ class PlanningService:
             floor_hour(now) + self._config.forecast_horizon,
         )
 
-        step = self._config.weather_grid_deg
         with _timed(timings, "weather"):
-            locations = {snap(p.point, step) for route in positions for p in route}
-            locations |= {snap(p, step) for p in grid.points}
+            # Checkpoints first: route risk must be complete; the heatmap may degrade.
             forecasts = await self._weather.hourly_forecast(
-                sorted(locations, key=_coords), start=start, end=end
+                sorted(checkpoint_locations, key=_coords), start=start, end=end
             )
+            grid_forecasts, heatmap_complete = await self._grid_forecasts(grid, start, end)
 
         with _timed(timings, "scoring"):
             routes = self._score_routes(
-                candidates, timings_by_route, forecasts, departure, request.load_lb
+                candidates, timings_by_route, forecasts, departure, request.load_lb, step
             )
             ranking = rank([r.risk for r in routes])
             tags = assign_tags([r.risk for r in routes], ranking)
             routes = [replace(r, tags=tuple(tags[r.id])) for r in routes]
+            grid_step = self._config.weather_grid_deg
             heatmap = build_frames(
                 grid.points,
-                {p: forecasts[snap(p, step)] for p in grid.points if snap(p, step) in forecasts},
+                {
+                    p: grid_forecasts[snap(p, grid_step)]
+                    for p in grid.points
+                    if snap(p, grid_step) in grid_forecasts
+                },
                 base_time=base_time,
                 hours=self._config.heatmap_hours,
                 spacing_m=grid.spacing_m,
@@ -157,7 +170,7 @@ class PlanningService:
             ranking=ranking,
             heatmap=heatmap,
             routing_source=self._routing.display_name,
-            warnings=tuple(self._warnings(routes)),
+            warnings=tuple(self._warnings(routes, step=step, heatmap_complete=heatmap_complete)),
             timings_ms=timings,
         )
 
@@ -216,6 +229,39 @@ class PlanningService:
                 distinct.offer_all(result)
         return distinct.routes[:target]
 
+    def _checkpoint_step(self, timings: Sequence[_RouteTiming]) -> float:
+        """Finest snapping grid that keeps checkpoint forecasts within the location budget.
+
+        Long trips share forecasts between nearby checkpoints rather than exceeding the
+        provider's per-minute limit; short trips keep the finest grid.
+        """
+        points = [p.point for t in timings for p in t.positions]
+        steps = self._config.checkpoint_grid_steps_deg
+        for step in steps:
+            if len({snap(p, step) for p in points}) <= self._config.checkpoint_location_budget:
+                return step
+        return steps[-1]
+
+    def _grid_budget(self, checkpoint_locations: int) -> int:
+        remaining = self._config.weather_location_budget - checkpoint_locations
+        target = min(self._config.heatmap_target_points, remaining)
+        return max(self._config.heatmap_min_points, target)
+
+    async def _grid_forecasts(
+        self, grid: CorridorGrid, start: datetime, end: datetime
+    ) -> tuple[Mapping[LatLon, HourlySeries], bool]:
+        """Heatmap weather, keeping whatever arrived if the provider refuses part of it."""
+        step = self._config.weather_grid_deg
+        locations = sorted({snap(p, step) for p in grid.points}, key=_coords)
+        try:
+            return await self._weather.hourly_forecast(locations, start=start, end=end), True
+        except IncompleteForecastError as exc:
+            logger.warning("Heatmap weather incomplete: %s", exc)
+            return exc.partial, False
+        except UpstreamServiceError as exc:
+            logger.warning("Heatmap weather unavailable: %s", exc)
+            return {}, False
+
     def _timing(self, candidate: RouteCandidate, request: PlanRequest) -> _RouteTiming:
         polyline = Polyline(candidate.points)
         # Provider anchors are in the provider's length units; rescale onto our polyline.
@@ -257,8 +303,8 @@ class PlanningService:
         forecasts: dict[LatLon, HourlySeries],
         departure: datetime,
         load_lb: float,
+        step: float,
     ) -> list[PlannedRoute]:
-        step = self._config.weather_grid_deg
         routes = []
         for label, candidate, timing in zip(ROUTE_LABELS, candidates, timings, strict=False):
             total_m = timing.positions[-1].distance_m
@@ -326,7 +372,9 @@ class PlanningService:
             snow_in_hr=pick(series.snow_in_hr),
         )
 
-    def _warnings(self, routes: Sequence[PlannedRoute]) -> Iterator[PlanWarning]:
+    def _warnings(
+        self, routes: Sequence[PlannedRoute], *, step: float, heatmap_complete: bool
+    ) -> Iterator[PlanWarning]:
         if len(routes) < self._config.route_count:
             yield PlanWarning(
                 WarningCode.FEWER_ROUTES,
@@ -338,6 +386,18 @@ class PlanningService:
                 WarningCode.FORECAST_UNAVAILABLE,
                 f"Forecast unavailable for {unknown} checkpoint(s); "
                 "their miles are not counted as safe.",
+            )
+        if step > self._config.weather_grid_deg:
+            yield PlanWarning(
+                WarningCode.SHARED_FORECASTS,
+                f"Long trip: nearby checkpoints share forecasts on a ~{round(step * 111)} km "
+                "grid to stay within the weather provider's limits.",
+            )
+        if not heatmap_complete:
+            yield PlanWarning(
+                WarningCode.HEATMAP_INCOMPLETE,
+                "The weather provider's rate limit was reached, so the corridor heatmap is "
+                "incomplete. Route risk is unaffected.",
             )
 
 

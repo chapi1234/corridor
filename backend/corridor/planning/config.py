@@ -25,13 +25,20 @@ class PlanningConfig:
 
     corridor_half_width_m: float = 30_000
     heatmap_target_points: int = 220
+    heatmap_min_points: int = 60
     heatmap_min_spacing_m: float = 10_000
-    heatmap_max_spacing_m: float = 45_000
+    heatmap_max_spacing_m: float = 90_000
     heatmap_hours: int = 49
     """Frames for forecast hours 0..48 relative to the departure hour (D15)."""
 
     weather_grid_deg: float = 0.05
     """Weather locations are snapped to this grid to dedupe requests and share cache."""
+    checkpoint_grid_steps_deg: tuple[float, ...] = (0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5)
+    """Coarser snapping grids tried in turn until checkpoints fit the location budget."""
+    checkpoint_location_budget: int = 240
+    weather_location_budget: int = 360
+    """Forecast locations per plan. Open-Meteo's free tier counts every location in a
+    request as one call and allows ~600 a minute, so a plan must stay well under that."""
     checkpoint_window_hours: int = 6
     """Hours of forecast either side of each checkpoint ETA returned for the detail chart."""
 

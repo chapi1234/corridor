@@ -18,6 +18,8 @@ from corridor.planning.errors import (
 logger = logging.getLogger(__name__)
 
 PROBLEM_CONTENT_TYPE = "application/problem+json"
+UPSTREAM_RETRY_AFTER_S = 60
+"""Open-Meteo's free-tier limit is per minute and it sends no Retry-After header."""
 
 
 def problem(status_code: int, kind: str, title: str, detail: str, **extra: Any) -> Response:
@@ -39,6 +41,21 @@ def problem_exception_handler(exc: Exception, context: dict[str, Any]) -> Respon
             return problem(
                 status.HTTP_422_UNPROCESSABLE_ENTITY, "no-route", "No route found", str(exc)
             )
+        case UpstreamServiceError() if exc.rate_limited:
+            logger.warning("Upstream rate limit: %s", exc)
+            retry_after_s = exc.retry_after_s or UPSTREAM_RETRY_AFTER_S
+            busy = problem(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                "upstream-rate-limited",
+                "Weather provider is busy",
+                f"The {exc.service} service limits how many forecasts can be fetched per "
+                f"minute. Try again in about {retry_after_s} seconds; forecasts already "
+                "fetched are kept, so the retry is faster.",
+                service=exc.service,
+                retry_after_s=retry_after_s,
+            )
+            busy["Retry-After"] = str(retry_after_s)
+            return busy
         case UpstreamServiceError():
             logger.warning("Upstream failure: %s", exc)
             return problem(

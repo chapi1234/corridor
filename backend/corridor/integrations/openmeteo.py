@@ -20,7 +20,7 @@ import httpx
 from corridor.domain.geometry import LatLon
 from corridor.domain.weather import UNKNOWN_WEATHER_CODE, HourlySeries
 from corridor.integrations.http import get_json
-from corridor.planning.errors import UpstreamServiceError
+from corridor.planning.errors import IncompleteForecastError, UpstreamServiceError
 
 SERVICE: Final = "open-meteo"
 HOURLY_VARIABLES: Final = (
@@ -69,10 +69,22 @@ class OpenMeteoClient:
         self, points: Sequence[LatLon], *, start: datetime, end: datetime
     ) -> dict[LatLon, HourlySeries]:
         unique = list(dict.fromkeys(points))
-        batches = await asyncio.gather(
-            *(self._fetch_batch(batch, start, end) for batch in batched(unique, self._batch_size))
+        outcomes = await asyncio.gather(
+            *(self._fetch_batch(batch, start, end) for batch in batched(unique, self._batch_size)),
+            return_exceptions=True,
         )
-        return {point: series for batch in batches for point, series in batch.items()}
+        result: dict[LatLon, HourlySeries] = {}
+        failure: UpstreamServiceError | None = None
+        for outcome in outcomes:
+            if isinstance(outcome, UpstreamServiceError):
+                failure = failure or outcome
+            elif isinstance(outcome, BaseException):
+                raise outcome
+            else:
+                result |= outcome
+        if failure is not None:
+            raise IncompleteForecastError(failure, result)
+        return result
 
     async def _fetch_batch(
         self, points: Sequence[LatLon], start: datetime, end: datetime
