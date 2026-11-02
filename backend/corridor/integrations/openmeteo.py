@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import math
+import random
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from itertools import batched, pairwise
@@ -23,6 +24,7 @@ from corridor.integrations.http import get_json
 from corridor.planning.errors import IncompleteForecastError, UpstreamServiceError
 
 SERVICE: Final = "open-meteo"
+_CONCURRENCY_RETRIES: Final = 4
 HOURLY_VARIABLES: Final = (
     "wind_speed_10m",
     "wind_gusts_10m",
@@ -59,7 +61,7 @@ class OpenMeteoClient:
         base_url: str,
         api_key: str = "",
         batch_size: int = 40,
-        max_concurrency: int = 6,
+        max_concurrency: int = 3,
         backoff_s: float = 0.4,
     ) -> None:
         self._http = http
@@ -109,19 +111,39 @@ class OpenMeteoClient:
             params["apikey"] = self._api_key
 
         async with self._semaphore:
-            data = await get_json(
-                self._http,
-                self._base_url,
-                service=SERVICE,
-                params=params,
-                backoff_s=self._backoff_s,
-            )
+            data = await self._get(params)
         payloads = data if isinstance(data, list) else [data]
         if len(payloads) != len(points):
             raise UpstreamServiceError(SERVICE, "location count mismatch in response")
         return {
             point: parse_series(payload) for point, payload in zip(points, payloads, strict=True)
         }
+
+    async def _get(self, params: Mapping[str, str | int | float]) -> Any:
+        """GET, retrying only Open-Meteo's *concurrency* rejection.
+
+        A 429 "Too many concurrent requests" clears as soon as another request finishes, so a
+        short jittered wait is enough. The per-minute/hour/day quota 429s are never retried:
+        waiting would only burn more quota (see ``integrations.http``).
+        """
+        for attempt in range(_CONCURRENCY_RETRIES + 1):
+            try:
+                return await get_json(
+                    self._http,
+                    self._base_url,
+                    service=SERVICE,
+                    params=params,
+                    backoff_s=self._backoff_s,
+                )
+            except UpstreamServiceError as exc:
+                if not (_is_concurrency_limit(exc) and attempt < _CONCURRENCY_RETRIES):
+                    raise
+            await asyncio.sleep(self._backoff_s * (2**attempt) * (1 + random.random()))
+        raise AssertionError("unreachable")
+
+
+def _is_concurrency_limit(exc: UpstreamServiceError) -> bool:
+    return exc.status == 429 and "concurrent" in exc.message.lower()
 
 
 def parse_series(payload: Mapping[str, Any]) -> HourlySeries:

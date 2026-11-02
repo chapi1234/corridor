@@ -145,6 +145,27 @@ async def test_rate_limit_is_not_retried_and_keeps_successful_batches(
 
 
 @respx.mock
+async def test_concurrency_rejection_is_retried(client: OpenMeteoClient) -> None:
+    denver, _ = load_fixture("open_meteo_two_points.json")
+    busy = httpx.Response(429, json={"reason": "Too many concurrent requests", "error": True})
+    route = respx.get(BASE).mock(side_effect=[busy, busy, httpx.Response(200, json=denver)])
+
+    result = await client.hourly_forecast([DENVER], start=START, end=END)
+
+    assert route.call_count == 3
+    assert DENVER in result
+
+
+@respx.mock
+async def test_persistent_concurrency_rejection_gives_up(client: OpenMeteoClient) -> None:
+    busy = httpx.Response(429, json={"reason": "Too many concurrent requests", "error": True})
+    route = respx.get(BASE).mock(return_value=busy)
+    with pytest.raises(IncompleteForecastError):
+        await client.hourly_forecast([DENVER], start=START, end=END)
+    assert route.call_count == 5
+
+
+@respx.mock
 async def test_retry_after_header_is_reported(client: OpenMeteoClient) -> None:
     respx.get(BASE).mock(return_value=httpx.Response(429, headers={"Retry-After": "42"}))
     with pytest.raises(IncompleteForecastError) as caught:
