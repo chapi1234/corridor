@@ -34,6 +34,17 @@ const SNOW_SCALE = 100
 /** weights[hour][point] in [0, 1]; missing data has weight 0. */
 export type Frames = Float32Array[]
 
+/**
+ * Risk weight given to Low cells, in levels. Above the draw floor so a calm corridor
+ * reads as a faint Low wash that is distinct from the transparent no-forecast gaps.
+ */
+export const LOW_PRESENCE_LEVEL = 0.6
+
+/** Compress the Low band onto [LOW_PRESENCE_LEVEL, 1) so it keeps its gradient. */
+function riskWeightLevel(index: number): number {
+  return index < 1 ? LOW_PRESENCE_LEVEL + index * (1 - LOW_PRESENCE_LEVEL) : index
+}
+
 export function buildFrames(heatmap: Heatmap, variable: HeatmapVariable, loadLb: number): Frames {
   const { max } = VARIABLE_SCALES[variable]
   const points = heatmap.points.length
@@ -50,7 +61,7 @@ export function buildFrames(heatmap: Heatmap, variable: HeatmapVariable, loadLb:
       const snow = snowRow[i]! / SNOW_SCALE
       const value =
         variable === 'risk'
-          ? classify(gust, rain, snow, loadLb).index
+          ? riskWeightLevel(classify(gust, rain, snow, loadLb).index)
           : variable === 'gust'
             ? gust
             : variable === 'rain'
@@ -62,7 +73,26 @@ export function buildFrames(heatmap: Heatmap, variable: HeatmapVariable, loadLb:
   })
 }
 
-/** Weight below which nothing is drawn: calm conditions stay transparent. */
+/**
+ * Whether every forecast cell in the hour is Low. False when the hour has no data at all,
+ * so a missing forecast is never reported as calm.
+ */
+export function isCalmHour(heatmap: Heatmap, hour: number, loadLb: number): boolean {
+  const gustRow = heatmap.gust_mph_x10[hour]
+  if (!gustRow) return false
+  let known = 0
+  for (let i = 0; i < gustRow.length; i++) {
+    const gustQ = gustRow[i]!
+    if (gustQ === heatmap.missing) continue
+    known++
+    const rain = heatmap.rain_in_hr_x1000[hour]![i]! / RAIN_SCALE
+    const snow = heatmap.snow_in_hr_x100[hour]![i]! / SNOW_SCALE
+    if (classify(gustQ / GUST_SCALE, rain, snow, loadLb).level > 0) return false
+  }
+  return known > 0
+}
+
+/** Weight below which nothing is drawn; Low cells sit just above it (LOW_PRESENCE_LEVEL). */
 export const HEATMAP_FLOOR = 0.06
 
 /** Kernel radius as a multiple of grid spacing; tuned so neighbouring kernels blend evenly. */

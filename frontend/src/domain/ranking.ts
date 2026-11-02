@@ -153,8 +153,18 @@ export function explain(
       return `Lower overall weather risk than ${other} (average ${best.averageRisk!.toFixed(2)} vs ${otherAvg}).`
     }
     case 'duration':
-      return `Equal weather risk to ${other}, and ${formatDurationShort(diff)} faster.`
+      return allLow(best) && allLow(competitor)
+        ? `All low risk, like ${other}, and ${formatDurationShort(diff)} faster.`
+        : `Equal weather risk to ${other}, and ${formatDurationShort(diff)} faster.`
   }
+}
+
+const CALM_TOLERANCE_MI = 0.5
+
+/** Every forecast mile is Low and none is unknown (sub-mile slivers ignored). */
+function allLow(route: RouteRisk): boolean {
+  const elevated = route.milesByLevel.slice(1).reduce((sum, m) => sum + m, 0)
+  return elevated < CALM_TOLERANCE_MI && route.unknownMiles < CALM_TOLERANCE_MI
 }
 
 export function assignTags(

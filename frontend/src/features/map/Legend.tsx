@@ -1,4 +1,4 @@
-import { VARIABLE_SCALES, type VariableScale } from '@/domain/heatmap'
+import { isCalmHour, VARIABLE_SCALES, type VariableScale } from '@/domain/heatmap'
 import { LEVEL_META } from '@/domain/levels'
 import { LEVELS } from '@/domain/risk'
 import { useScoredPlan } from '@/state/selectors'
@@ -23,7 +23,10 @@ function rampGradient(scale: VariableScale): string {
 export function Legend() {
   const heatmap = useAppStore((s) => s.heatmap)
   const scale = VARIABLE_SCALES[heatmap.variable]
-  const hasRests = useScoredPlan()?.plan.routes.some((r) => r.rest_stops.length > 0) ?? false
+  const hour = useAppStore((s) => s.forecastHour)
+  const scored = useScoredPlan()
+  const hasRests = scored?.plan.routes.some((r) => r.rest_stops.length > 0) ?? false
+  const calm = scored ? isCalmHour(scored.plan.heatmap, hour, scored.loadLb) : false
 
   return (
     <aside className={styles.legend} aria-label="Map legend">
@@ -53,6 +56,7 @@ export function Legend() {
             {heatmap.variable !== 'risk' && ` (${scale.unit})`}
           </span>
           <div className={styles.ramp} style={{ background: rampGradient(scale) }} aria-hidden />
+          {calm && <p className={styles.calm}>Calm across the corridor this hour.</p>}
           {/* The risk ramp shares the route-risk swatches above; raw variables get their thresholds. */}
           {heatmap.variable !== 'risk' && (
             <div className={`${styles.ticks} num`}>

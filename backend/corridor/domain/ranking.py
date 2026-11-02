@@ -71,6 +71,8 @@ class RouteRisk:
 
 RankKey = tuple[int, int, int, int, int]
 
+CALM_TOLERANCE_MI = 0.5
+
 
 @dataclass(frozen=True, slots=True)
 class Ranking:
@@ -195,7 +197,15 @@ def explain(best: RouteRisk, competitor: RouteRisk | None, deciding: Criterion |
                 f"(average {best.average_risk:.2f} vs {other_avg})."
             )
         case Criterion.DURATION:
+            if _all_low(best) and _all_low(competitor):
+                return f"All low risk, like {other}, and {format_duration(diff)} faster."
             return f"Equal weather risk to {other}, and {format_duration(diff)} faster."
+
+
+def _all_low(route: RouteRisk) -> bool:
+    """Every forecast mile is Low and none is unknown (sub-mile slivers ignored)."""
+    elevated = sum(m for level, m in route.miles_by_level.items() if level > Level.LOW)
+    return elevated < CALM_TOLERANCE_MI and route.unknown_miles < CALM_TOLERANCE_MI
 
 
 def assign_tags(routes: Sequence[RouteRisk], ranking: Ranking) -> dict[str, list[Tag]]:

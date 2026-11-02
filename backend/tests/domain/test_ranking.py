@@ -87,11 +87,18 @@ def test_summary_with_no_forecast_has_no_average() -> None:
             id="average",
         ),
         pytest.param(
-            route("A", hours=10),
-            route("B", hours=10.7),
+            route("A", moderate=20, low=80, hours=10),
+            route("B", moderate=20, low=80, hours=10.7),
             Criterion.DURATION,
             "Equal weather risk to Route B, and 42 min faster.",
             id="duration",
+        ),
+        pytest.param(
+            route("A", hours=10),
+            route("B", hours=10.7),
+            Criterion.DURATION,
+            "All low risk, like Route B, and 42 min faster.",
+            id="duration-calm",
         ),
     ],
 )

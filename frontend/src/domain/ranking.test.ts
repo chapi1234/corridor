@@ -53,10 +53,17 @@ describe('rank (mirrors backend ranking)', () => {
     ],
     [
       'duration',
+      route('A', { moderate: 20, low: 80, hours: 10 }),
+      route('B', { moderate: 20, low: 80, hours: 10.7 }),
+      'duration',
+      'Equal weather risk to Route B, and 42 min faster.',
+    ],
+    [
+      'duration when calm',
       route('A', { hours: 10 }),
       route('B', { hours: 10.7 }),
       'duration',
-      'Equal weather risk to Route B, and 42 min faster.',
+      'All low risk, like Route B, and 42 min faster.',
     ],
   ] as const)('%s decides', (_, a, b, criterion, reason) => {
     const ranking = rank([a, b])
