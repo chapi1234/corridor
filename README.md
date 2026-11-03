@@ -104,7 +104,8 @@ Push the repo to GitHub first.
 ### Alternative: backend on Vercel
 
 `backend/vercel.json` and `[tool.vercel]` in `backend/pyproject.toml` let the same backend run
-as a Vercel Function (no sleep, 1 vCPU, 300 s limit). Create a second Vercel project from the repo
+as a Vercel Function (no sleep, 1 vCPU, 300 s limit); Vercel installs from `backend/requirements.txt`,
+exported from `uv.lock` (CI fails if they drift). Create a second Vercel project from the repo
 with **Root Directory `backend`**, add **Upstash Redis** from the Vercel Marketplace (it provides
 `KV_URL`, which the backend uses as its cache), and set `DJANGO_SECRET_KEY` and
 `CORS_ALLOWED_ORIGINS`. The entrypoint `config/vercel.py` always loads production settings;
