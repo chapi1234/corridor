@@ -10,7 +10,6 @@ import maplibregl, {
   type LngLatBoundsLike,
   type Map as MapLibreMap,
   type MapMouseEvent,
-  type MapSourceDataEvent,
 } from 'maplibre-gl'
 
 import {
@@ -29,6 +28,20 @@ import type { CheckpointRef, HoverTarget, Theme } from '@/state/store'
 import { BASEMAP_STYLES, firstSymbolLayerId, tintBasemap } from './basemap'
 import { endpointIcon, restIcon, shieldIcon, truckIcon } from './mapImages'
 
+/**
+ * One heatmap layer per variable over a shared source. heatmap-weight is data-driven, so
+ * changing it makes MapLibre's worker rebuild the tile buffers while heatmap-color applies on
+ * the next frame — swapping both on one layer drew the old variable's weights in the new
+ * colours for a frame (a corridor-wide flash). Each layer keeps its own weights and colours;
+ * switching variable only cross-fades heatmap-opacity, which is not data-driven.
+ */
+const HEAT_LAYERS = Object.fromEntries(
+  (Object.keys(VARIABLE_SCALES) as HeatmapVariable[]).map((variable) => [
+    variable,
+    `c-heat-${variable}`,
+  ]),
+) as Record<HeatmapVariable, string>
+
 const SRC = {
   heat: 'c-heat',
   routes: 'c-routes',
@@ -40,7 +53,6 @@ const SRC = {
 } as const
 
 const LYR = {
-  heat: 'c-heat',
   casing: 'c-route-casing',
   muted: 'c-route-muted',
   selectedCasing: 'c-route-selected-casing',
@@ -65,7 +77,8 @@ export interface PlanView {
 }
 
 export interface HeatmapView {
-  frames: Frames
+  /** Every variable's frames, uploaded together so switching variable never reloads data. */
+  frames: Record<HeatmapVariable, Frames>
   points: number[][]
   spacingM: number
   variable: HeatmapVariable
@@ -109,8 +122,6 @@ export class MapController {
   private styleReady = false
   private plan: PlanView | null = null
   private heat: HeatmapView | null = null
-  /** Bumped on every heatmap data swap so a stale reveal can tell it was superseded. */
-  private heatSwap = 0
   private hour = 0
   private hover: HoverTarget | null = null
   private active: CheckpointRef | null = null
@@ -183,42 +194,20 @@ export class MapController {
       this.heat && view && this.heat.frames === view.frames && this.heat.points === view.points
     this.heat = view
     if (!this.styleReady) return
-    if (sameData) {
-      this.renderHeatStyle()
-      return
-    }
-    this.swapHeatData()
-  }
-
-  /**
-   * New weights reach the GPU only after MapLibre's worker re-tiles the source, but paint
-   * properties apply on the next frame. Applying the new colour ramp straight away paints the
-   * old variable's weights in the new colours (a full-corridor flash when switching to rain),
-   * so fade the layer out, swap the data, and restyle once the source has loaded.
-   */
-  private swapHeatData(): void {
-    const swap = ++this.heatSwap
-    if (this.map.getLayer(LYR.heat)) this.map.setPaintProperty(LYR.heat, 'heatmap-opacity', 0)
-    this.renderHeatData()
-    const reveal = () => {
-      this.map.off('sourcedata', onData)
-      window.clearTimeout(fallback)
-      if (swap === this.heatSwap) this.renderHeatStyle()
-    }
-    const onData = (event: MapSourceDataEvent) => {
-      if (event.sourceId === SRC.heat && event.isSourceLoaded) reveal()
-    }
-    this.map.on('sourcedata', onData)
-    // Never leave the layer hidden if the event is missed (e.g. the style reloads mid-swap).
-    const fallback = window.setTimeout(reveal, 1000)
+    // Switching variable only swaps paint properties (weight key + colour ramp), which apply
+    // together in one frame. Data is re-uploaded only when the plan or load changes.
+    if (!sameData) this.renderHeatData()
+    this.renderHeatStyle()
   }
 
   /** Called on every slider tick or playback step: paint-property changes only. */
   setHour(hour: number, transition?: HourTransition): void {
     this.hour = hour
     if (!this.styleReady) return
-    if (this.map.getLayer(LYR.heat)) {
-      this.map.setPaintProperty(LYR.heat, 'heatmap-weight', ['get', `h${hour}`])
+    for (const [variable, layer] of heatLayers()) {
+      if (this.map.getLayer(layer)) {
+        this.map.setPaintProperty(layer, 'heatmap-weight', heatWeight(variable, hour))
+      }
     }
     if (transition) this.driveGhost(transition)
     else this.renderGhost()
@@ -258,20 +247,23 @@ export class MapController {
       })
     }
 
-    this.map.addLayer(
-      {
-        id: LYR.heat,
-        type: 'heatmap',
-        source: SRC.heat,
-        maxzoom: HEATMAP_MAX_ZOOM,
-        paint: {
-          'heatmap-weight': ['get', `h${this.hour}`],
-          'heatmap-intensity': 1 / UNIFORM_FIELD_DENSITY,
-          'heatmap-opacity-transition': { duration: 200 },
+    for (const [variable, layer] of heatLayers()) {
+      this.map.addLayer(
+        {
+          id: layer,
+          type: 'heatmap',
+          source: SRC.heat,
+          maxzoom: HEATMAP_MAX_ZOOM,
+          paint: {
+            'heatmap-weight': heatWeight(variable, this.hour),
+            'heatmap-intensity': 1 / UNIFORM_FIELD_DENSITY,
+            'heatmap-opacity': 0,
+            'heatmap-opacity-transition': { duration: 200 },
+          },
         },
-      },
-      beforeLabels,
-    )
+        beforeLabels,
+      )
+    }
 
     this.map.addLayer({
       id: LYR.casing,
@@ -574,9 +566,12 @@ export class MapController {
             type: 'FeatureCollection',
             features: heat.points.map((coordinates, i) => {
               const properties: Record<string, number> = {}
-              heat.frames.forEach((weights, hour) => {
-                properties[`h${hour}`] = Math.round(weights[i]! * 1000) / 1000
-              })
+              for (const [variable, frames] of Object.entries(heat.frames)) {
+                frames.forEach((weights, hour) => {
+                  properties[heatKey(variable as HeatmapVariable, hour)] =
+                    Math.round(weights[i]! * 1000) / 1000
+                })
+              }
               return { type: 'Feature', properties, geometry: { type: 'Point', coordinates } }
             }),
           }
@@ -587,16 +582,12 @@ export class MapController {
   private renderHeatStyle(): void {
     const heat = this.heat
     if (!heat) return
-    this.map.setLayoutProperty(LYR.heat, 'visibility', heat.visible ? 'visible' : 'none')
-    this.map.setPaintProperty(LYR.heat, 'heatmap-opacity', heat.opacity)
-    this.map.setPaintProperty(LYR.heat, 'heatmap-color', heatmapColorRamp(heat.variable))
-
     const meanLat = heat.points.reduce((sum, p) => sum + p[1]!, 0) / Math.max(heat.points.length, 1)
     const radiusZ0 =
       (KERNEL_SPACING_RATIO * heat.spacingM) /
       (METERS_PER_PIXEL_Z0 * Math.cos((meanLat * Math.PI) / 180))
     // Exponential base 2 makes the kernel track ground distance exactly at every zoom.
-    this.map.setPaintProperty(LYR.heat, 'heatmap-radius', [
+    const radius: ExpressionSpecification = [
       'interpolate',
       ['exponential', 2],
       ['zoom'],
@@ -604,7 +595,15 @@ export class MapController {
       radiusZ0,
       HEATMAP_MAX_ZOOM,
       radiusZ0 * 2 ** HEATMAP_MAX_ZOOM,
-    ])
+    ]
+    for (const [variable, layer] of heatLayers()) {
+      // Hidden variables stay laid out (visible at opacity 0) so switching to one is instant.
+      this.map.setLayoutProperty(layer, 'visibility', heat.visible ? 'visible' : 'none')
+      const active = heat.visible && variable === heat.variable
+      this.map.setPaintProperty(layer, 'heatmap-opacity', active ? heat.opacity : 0)
+      this.map.setPaintProperty(layer, 'heatmap-color', heatmapColorRamp(variable))
+      this.map.setPaintProperty(layer, 'heatmap-radius', radius)
+    }
   }
 
   /** Elapsed driving time at the current forecast hour, or null without a selected route. */
@@ -778,6 +777,19 @@ function withAlpha(hex: string, alpha: number): string {
   const value = hex.replace('#', '')
   const [r, g, b] = [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16))
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/** Feature property holding one variable's weight at one forecast hour, e.g. "rain12". */
+function heatKey(variable: HeatmapVariable, hour: number): string {
+  return `${variable}${hour}`
+}
+
+function heatWeight(variable: HeatmapVariable, hour: number): ExpressionSpecification {
+  return ['get', heatKey(variable, hour)]
+}
+
+function heatLayers(): [HeatmapVariable, string][] {
+  return Object.entries(HEAT_LAYERS) as [HeatmapVariable, string][]
 }
 
 /** Density → colour, with each risk colour starting exactly at its rule threshold. */

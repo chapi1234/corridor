@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { buildFrames } from '@/domain/heatmap'
+import { buildFrames, VARIABLE_SCALES, type Frames, type HeatmapVariable } from '@/domain/heatmap'
 import { useScoredPlan } from '@/state/selectors'
 import { PLAYBACK_HOUR_MS, useAppStore, type HoverTarget } from '@/state/store'
 
@@ -73,9 +73,14 @@ export default function MapView() {
   const frames = useMemo(
     () =>
       planHeatmap && loadLb !== undefined
-        ? buildFrames(planHeatmap, heatmap.variable, loadLb)
+        ? (Object.fromEntries(
+            (Object.keys(VARIABLE_SCALES) as HeatmapVariable[]).map((variable) => [
+              variable,
+              buildFrames(planHeatmap, variable, loadLb),
+            ]),
+          ) as Record<HeatmapVariable, Frames>)
         : null,
-    [planHeatmap, heatmap.variable, loadLb],
+    [planHeatmap, loadLb],
   )
 
   useEffect(() => {
@@ -99,7 +104,7 @@ export default function MapView() {
       {scored && (
         <>
           <LayerControl />
-          <Legend frames={frames} />
+          <Legend frames={frames?.[heatmap.variable] ?? null} />
         </>
       )}
       {tooltip && scored && <MapTooltip scored={scored} {...tooltip} />}
