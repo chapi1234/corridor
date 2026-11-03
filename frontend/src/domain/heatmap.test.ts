@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import type { Heatmap } from '@/api/types'
 
-import { buildFrames, HEATMAP_FLOOR, isCalmHour, LOW_PRESENCE_LEVEL } from './heatmap'
+import {
+  buildFrames,
+  drawFloor,
+  HEATMAP_FLOOR,
+  isCalmHour,
+  LOW_PRESENCE_LEVEL,
+  nothingToDraw,
+} from './heatmap'
 
 const MISSING = -1
 
@@ -46,5 +53,27 @@ describe('isCalmHour', () => {
 
   it('never calls a missing hour calm', () => {
     expect(isCalmHour(heatmap(10), 5, 40_000)).toBe(false)
+  })
+})
+
+describe('nothingToDraw', () => {
+  it('reports a dry corridor on the rain layer', () => {
+    const frames = buildFrames(heatmap(10), 'rain', 40_000)
+    expect(nothingToDraw(frames, 0, 'rain')).toBe(true)
+  })
+
+  it('is false once any cell reaches the draw floor', () => {
+    const wet = heatmap(10)
+    wet.rain_in_hr_x1000[0]![2] = 120 // 0.12 in/hr: Moderate
+    expect(nothingToDraw(buildFrames(wet, 'rain', 40_000), 0, 'rain')).toBe(false)
+  })
+
+  it('never calls a missing hour empty', () => {
+    expect(nothingToDraw(buildFrames(heatmap(10), 'rain', 40_000), 5, 'rain')).toBe(false)
+  })
+
+  it('keeps the floor below every first threshold', () => {
+    expect(drawFloor('rain')).toBeLessThan(0.1 / 2)
+    expect(drawFloor('risk')).toBe(HEATMAP_FLOOR)
   })
 })

@@ -10,10 +10,11 @@ import maplibregl, {
   type LngLatBoundsLike,
   type Map as MapLibreMap,
   type MapMouseEvent,
+  type MapSourceDataEvent,
 } from 'maplibre-gl'
 
 import {
-  HEATMAP_FLOOR,
+  drawFloor,
   KERNEL_SPACING_RATIO,
   UNIFORM_FIELD_DENSITY,
   VARIABLE_SCALES,
@@ -108,6 +109,8 @@ export class MapController {
   private styleReady = false
   private plan: PlanView | null = null
   private heat: HeatmapView | null = null
+  /** Bumped on every heatmap data swap so a stale reveal can tell it was superseded. */
+  private heatSwap = 0
   private hour = 0
   private hover: HoverTarget | null = null
   private active: CheckpointRef | null = null
@@ -180,8 +183,34 @@ export class MapController {
       this.heat && view && this.heat.frames === view.frames && this.heat.points === view.points
     this.heat = view
     if (!this.styleReady) return
-    if (!sameData) this.renderHeatData()
-    this.renderHeatStyle()
+    if (sameData) {
+      this.renderHeatStyle()
+      return
+    }
+    this.swapHeatData()
+  }
+
+  /**
+   * New weights reach the GPU only after MapLibre's worker re-tiles the source, but paint
+   * properties apply on the next frame. Applying the new colour ramp straight away paints the
+   * old variable's weights in the new colours (a full-corridor flash when switching to rain),
+   * so fade the layer out, swap the data, and restyle once the source has loaded.
+   */
+  private swapHeatData(): void {
+    const swap = ++this.heatSwap
+    if (this.map.getLayer(LYR.heat)) this.map.setPaintProperty(LYR.heat, 'heatmap-opacity', 0)
+    this.renderHeatData()
+    const reveal = () => {
+      this.map.off('sourcedata', onData)
+      window.clearTimeout(fallback)
+      if (swap === this.heatSwap) this.renderHeatStyle()
+    }
+    const onData = (event: MapSourceDataEvent) => {
+      if (event.sourceId === SRC.heat && event.isSourceLoaded) reveal()
+    }
+    this.map.on('sourcedata', onData)
+    // Never leave the layer hidden if the event is missed (e.g. the style reloads mid-swap).
+    const fallback = window.setTimeout(reveal, 1000)
   }
 
   /** Called on every slider tick or playback step: paint-property changes only. */
@@ -760,7 +789,7 @@ export function heatmapColorRamp(variable: HeatmapVariable): ExpressionSpecifica
     number,
     number,
   ]
-  const floor = Math.min(HEATMAP_FLOOR, t1 * 0.5)
+  const floor = drawFloor(variable)
   const [low, moderate, high, severe, noTravel] = riskPalette()
   return [
     'interpolate',

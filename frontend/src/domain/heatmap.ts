@@ -95,6 +95,23 @@ export function isCalmHour(heatmap: Heatmap, hour: number, loadLb: number): bool
 /** Weight below which nothing is drawn; Low cells sit just above it (LOW_PRESENCE_LEVEL). */
 export const HEATMAP_FLOOR = 0.06
 
+/** Draw floor for a variable: never above half its first threshold, so Moderate always shows. */
+export function drawFloor(variable: HeatmapVariable): number {
+  const scale = VARIABLE_SCALES[variable]
+  return Math.min(HEATMAP_FLOOR, (scale.thresholds[0] / scale.max) * 0.5)
+}
+
+/**
+ * Whether the hour has forecasts but none heavy enough to draw — e.g. a dry corridor on the
+ * rain layer. False when the hour has no data, so a missing forecast never reads as dry.
+ */
+export function nothingToDraw(frames: Frames, hour: number, variable: HeatmapVariable): boolean {
+  const weights = frames[hour]
+  if (!weights || weights.length === 0) return false
+  const floor = drawFloor(variable)
+  return weights.every((w) => w < floor)
+}
+
 /** Kernel radius as a multiple of grid spacing; tuned so neighbouring kernels blend evenly. */
 export const KERNEL_SPACING_RATIO = 1.25
 /**

@@ -1,4 +1,10 @@
-import { isCalmHour, VARIABLE_SCALES, type VariableScale } from '@/domain/heatmap'
+import {
+  isCalmHour,
+  nothingToDraw,
+  VARIABLE_SCALES,
+  type Frames,
+  type VariableScale,
+} from '@/domain/heatmap'
 import { LEVEL_META } from '@/domain/levels'
 import { LEVELS } from '@/domain/risk'
 import { useScoredPlan } from '@/state/selectors'
@@ -20,13 +26,16 @@ function rampGradient(scale: VariableScale): string {
     var(--risk-4) ${t4}%)`
 }
 
-export function Legend() {
+export function Legend({ frames }: { frames: Frames | null }) {
   const heatmap = useAppStore((s) => s.heatmap)
   const scale = VARIABLE_SCALES[heatmap.variable]
   const hour = useAppStore((s) => s.forecastHour)
   const scored = useScoredPlan()
   const hasRests = scored?.plan.routes.some((r) => r.rest_stops.length > 0) ?? false
   const calm = scored ? isCalmHour(scored.plan.heatmap, hour, scored.loadLb) : false
+  // Raw layers (rain, snow, gusts) can be legitimately empty; say so instead of a blank map.
+  const empty =
+    heatmap.variable !== 'risk' && frames !== null && nothingToDraw(frames, hour, heatmap.variable)
   const hasAlerts = scored?.plan.routes.some((r) => r.alerts.some((a) => a.in_effect)) ?? false
 
   return (
@@ -63,7 +72,14 @@ export function Legend() {
             {heatmap.variable !== 'risk' && ` (${scale.unit})`}
           </span>
           <div className={styles.ramp} style={{ background: rampGradient(scale) }} aria-hidden />
-          {calm && <p className={styles.calm}>Calm across the corridor this hour.</p>}
+          {heatmap.variable === 'risk' && calm && (
+            <p className={styles.calm}>Calm across the corridor this hour.</p>
+          )}
+          {empty && (
+            <p className={styles.calm}>
+              No {scale.label.toLowerCase()} along the corridor this hour.
+            </p>
+          )}
           {/* The risk ramp shares the route-risk swatches above; raw variables get their thresholds. */}
           {heatmap.variable !== 'risk' && (
             <div className={`${styles.ticks} num`}>

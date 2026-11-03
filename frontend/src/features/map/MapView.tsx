@@ -99,7 +99,7 @@ export default function MapView() {
       {scored && (
         <>
           <LayerControl />
-          <Legend />
+          <Legend frames={frames} />
         </>
       )}
       {tooltip && scored && <MapTooltip scored={scored} {...tooltip} />}
