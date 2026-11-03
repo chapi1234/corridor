@@ -8,7 +8,8 @@ SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REDIRECT_EXEMPT = [r"^api/v1/health$"]
 
-if REDIS_URL := env("REDIS_URL", default=""):
+# REDIS_URL on Render; Vercel's Upstash integration provides KV_URL (rediss://).
+if REDIS_URL := env("REDIS_URL", default="") or env("KV_URL", default=""):
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",

@@ -35,6 +35,10 @@ dev = [
 [tool.uv]
 package = false
 
+# Vercel deploys from this folder; Render uses the Dockerfile and ignores this.
+[tool.vercel]
+entrypoint = "config.vercel:application"
+
 # ---------------------------------------------------------------- ruff
 [tool.ruff]
 line-length = 100

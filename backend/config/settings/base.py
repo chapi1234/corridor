@@ -15,6 +15,10 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.
 # Render sets the service's public hostname; trust it without repeating it by hand.
 if RENDER_HOST := env("RENDER_EXTERNAL_HOSTNAME", default=""):
     ALLOWED_HOSTS.append(RENDER_HOST)
+# Vercel sets the deployment, branch and production hostnames at runtime.
+for _var in ("VERCEL_URL", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL"):
+    if _host := env(_var, default=""):
+        ALLOWED_HOSTS.append(_host)
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",

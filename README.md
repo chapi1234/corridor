@@ -101,6 +101,15 @@ Push the repo to GitHub first.
 3. **Connect them.** In Render set `CORS_ALLOWED_ORIGINS` to the Vercel URL
    (e.g. `https://corridor.vercel.app`) and save; it redeploys.
 
+### Alternative: backend on Vercel
+
+`backend/vercel.json` and `[tool.vercel]` in `backend/pyproject.toml` let the same backend run
+as a Vercel Function (no sleep, 1 vCPU, 300 s limit). Create a second Vercel project from the repo
+with **Root Directory `backend`**, add **Upstash Redis** from the Vercel Marketplace (it provides
+`KV_URL`, which the backend uses as its cache), and set `DJANGO_SECRET_KEY` and
+`CORS_ALLOWED_ORIGINS`. The entrypoint `config/vercel.py` always loads production settings;
+Vercel's hostnames are trusted automatically. Render keeps using the Dockerfile, unaffected.
+
 Free Render services sleep after 15 minutes idle and take about a minute to wake. The page
 pings the backend as soon as it loads, so it is usually awake by the time a trip is
 submitted. To keep it always warm, point a free uptime pinger (e.g. cron-job.org) at
